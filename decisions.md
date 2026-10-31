@@ -98,3 +98,23 @@ Some products have several past promotions, but none has two active ones. A part
 ### Check foreign keys after loading
 
 Enforcement stays off during the load, and `PRAGMA foreign_key_check` runs before the commit. This reports every broken reference at once, and any failure rolls back to the previous data.
+
+### Handle "-ão" plurals when searching
+
+"violao" is not a substring of "violoes", so accent removal alone can't meet the roadmap's search requirement. Each search word is expanded into its singular and plural forms: `-ão`, `-ões` and `-ães` for those words, and dropping the final "s" for regular plurals. This covers the store's vocabulary without adding a stemming library.
+
+### Return every match so the tool can filter by final price
+
+`search_products` accepts `limit=None`. The scenario "violões até R$ 1000" must filter on the final price, and that calculation belongs to `policy`, so the store can't do it in SQL. The default limit of 10 on 36 matches would otherwise drop cheap products before the filter runs.
+
+### Keep `available_only` in SQL
+
+Deciding availability belongs to `policy`, but the roadmap puts this filter in the query, and applying it before `LIMIT` is what keeps the limit correct. It repeats the rule in `product_situation`, so a test in step 3.4 checks that the two agree.
+
+### Add a search column to promotions
+
+`find_promotions` must find "Promoção de Páscoa" from "pascoa", which needs the same accent-free text as products and categories.
+
+### Keep handoffs out of the rebuild
+
+The `handoffs` table is the only one created with `IF NOT EXISTS` and not dropped by `schema.sql`. Handoffs happen at runtime and exist nowhere else, so re-ingestion must not erase them.

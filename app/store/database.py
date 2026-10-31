@@ -13,5 +13,11 @@ def connect_for_writing(db_path: Path) -> sqlite3.Connection:
     return conn
 
 
+def connect_read_only(db_path: Path) -> sqlite3.Connection:
+    conn = sqlite3.connect(f"{db_path.resolve().as_uri()}?mode=ro", uri=True)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
 def create_schema(conn: sqlite3.Connection) -> None:
     conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))

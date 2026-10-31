@@ -33,7 +33,8 @@ CREATE TABLE promotions (
     product_id INTEGER NOT NULL REFERENCES products (product_id),
     discount_percent INTEGER NOT NULL CHECK (discount_percent BETWEEN 1 AND 100),
     description TEXT NOT NULL,
-    is_active INTEGER NOT NULL CHECK (is_active IN (0, 1))
+    is_active INTEGER NOT NULL CHECK (is_active IN (0, 1)),
+    description_search TEXT NOT NULL
 ) STRICT;
 
 CREATE UNIQUE INDEX one_active_promotion_per_product
@@ -69,4 +70,13 @@ CREATE TABLE order_items (
     product_id INTEGER NOT NULL REFERENCES products (product_id),
     quantity INTEGER NOT NULL CHECK (quantity > 0),
     PRIMARY KEY (order_id, product_id)
+) STRICT;
+
+-- Not in the DROP list above: handoffs are created at runtime and must survive re-ingestion.
+CREATE TABLE IF NOT EXISTS handoffs (
+    handoff_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    kind TEXT NOT NULL CHECK (kind IN ('reclamacao', 'atendimento_humano')),
+    summary TEXT NOT NULL CHECK (summary <> ''),
+    contact TEXT NOT NULL CHECK (contact <> ''),
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) STRICT;

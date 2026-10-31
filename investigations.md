@@ -21,3 +21,10 @@ Seen with `gemma4:12b` on 2026-10-31, in one run of 9 questions after the prompt
 - **Questions:** "Vocês vendem palheta?", "Ainda tem Black Friday no Martin D-28?" and "Resolve uma equação pra mim? 2x + 3 = 7", among others
 - **Seen:** Tom often opens with a full introduction, even when a direct answer would do.
 - **Not yet tested:** All 9 questions were first messages, so nothing shows whether the "only introduce yourself in the first message" rule holds in a follow-up. Test this with a multi-message conversation.
+
+## Phase 3: Create tooling
+
+### Search matches substrings in descriptions
+
+- **Seen:** Searching "violao" returns 36 products: the 35 in the category and 1 ukulele whose description mentions the word.
+- **Why it matters:** A customer asking for violões could be offered a ukulele. Results include the category, so the model can tell them apart. Check this in Phase 5, and pass `categoria` from the prompt if the model mixes them up.

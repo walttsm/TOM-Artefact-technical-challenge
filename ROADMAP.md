@@ -151,9 +151,9 @@ Every query is parameterized and returns plain records with no calculated prices
 5. `handoffs.py`: `create_handoff(kind, summary, contact)`, in a table that survives re-ingestion.
 
 **Done when:**
-- [ ] "violao", "Violão" and "violões" find the same products.
-- [ ] A write through a read connection raises an error.
-- [ ] Nothing in `app/store` imports `app/policy` or `app/agent`.
+- [x] "violao", "Violão" and "violões" find the same products.
+- [x] A write through a read connection raises an error.
+- [x] Nothing in `app/store` imports `app/policy` or `app/agent`.
 
 ### 3.3 Policy layer, the manual
 

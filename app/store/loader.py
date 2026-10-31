@@ -72,10 +72,18 @@ def load_catalog(conn: sqlite3.Connection, data_dir: Path) -> None:
     )
     conn.executemany(
         """
-        INSERT INTO promotions (promotion_id, product_id, discount_percent, description, is_active)
-        VALUES (:promotion_id, :product_id, :discount_percent, :description, :is_active)
+        INSERT INTO promotions (
+            promotion_id, product_id, discount_percent, description, is_active, description_search
+        )
+        VALUES (
+            :promotion_id, :product_id, :discount_percent, :description, :is_active,
+            :description_search
+        )
         """,
-        _read_rows(data_dir, "promotions"),
+        (
+            {**row, "description_search": to_search_text(row["description"])}
+            for row in _read_rows(data_dir, "promotions")
+        ),
     )
 
 
