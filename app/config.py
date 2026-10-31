@@ -19,6 +19,7 @@ class Settings:
     ollama_timeout: float
     data_dir: Path = PROJECT_ROOT / "data"
     db_path: Path = PROJECT_ROOT / "storage" / "emporio.db"
+    checkpoints_path: Path = PROJECT_ROOT / "storage" / "checkpoints.db"
 
 
 def get_settings() -> Settings:
@@ -29,4 +30,7 @@ def get_settings() -> Settings:
         ollama_timeout=float(os.getenv("OLLAMA_TIMEOUT", "300")),
         data_dir=Path(os.getenv("DATA_DIR", PROJECT_ROOT / "data")),
         db_path=Path(os.getenv("DB_PATH", PROJECT_ROOT / "storage" / "emporio.db")),
+        checkpoints_path=Path(
+            os.getenv("CHECKPOINTS_PATH", PROJECT_ROOT / "storage" / "checkpoints.db")
+        ),
     )

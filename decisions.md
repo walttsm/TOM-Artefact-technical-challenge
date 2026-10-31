@@ -194,7 +194,7 @@ The state has `messages` for finished turns and `turn` for the current one. Tool
 
 ### Keep tool results in the conversation context
 
-Finished turns keep their tool calls and results, so a follow-up such as "em quantas vezes posso parcelar?" needs no new lookup. The cost is a larger context on long conversations, already listed as a known limitation.
+Finished turns keep their tool calls and results, so a follow-up such as "em quantas vezes posso parcelar?" needs no new lookup. `history()` hides them from the API. The cost is a larger context on long conversations, already listed as a known limitation.
 
 ### End the turn at the round limit without another model call
 
@@ -203,6 +203,10 @@ Finished turns keep their tool calls and results, so a follow-up such as "em qua
 ### Send every tool error to the model
 
 Unknown tools, wrong arguments and exceptions all return as `Erro ao executar ...`, with a warning in the log. The model can fix its arguments or tell the customer it couldn't check. Only LLM failures stop the turn, with a 502.
+
+### Open the checkpoint database at server startup
+
+`app = create_app()` runs on import, so opening SQLite there would create `storage/checkpoints.db` whenever the tests import the API. The lifespan handler opens it when the server starts and closes it when it stops.
 
 ### Register complaints without an order number
 

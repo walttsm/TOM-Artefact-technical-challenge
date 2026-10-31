@@ -1,17 +1,21 @@
 """LangGraph agent: an agent <-> tools loop, with one conversation per thread_id."""
 
 import logging
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterator, Sequence
+from contextlib import contextmanager
 from operator import add
 from typing import Annotated, Any, Literal, NotRequired, TypedDict
 
 import httpx
 import ollama
+from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.checkpoint.memory import InMemorySaver
+from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Overwrite
 
 from app.agent.prompt import build_system_prompt
+from app.agent.tools import StoreTools
 from app.config import Settings
 
 logger = logging.getLogger(__name__)
@@ -101,7 +105,12 @@ def _run_tool(tools: dict[str, Tool], call: ToolCall) -> Message:
 
 
 class Agent:
-    def __init__(self, llm: LLM, tools: Sequence[Tool] = ()) -> None:
+    def __init__(
+        self,
+        llm: LLM,
+        tools: Sequence[Tool] = (),
+        checkpointer: BaseCheckpointSaver | None = None,
+    ) -> None:
         tools_by_name = {tool.__name__: tool for tool in tools}
 
         def call_model(state: AgentState) -> dict[str, list[Message]]:
@@ -136,7 +145,7 @@ class Agent:
         builder.add_conditional_edges("tools", after_tools)
         builder.add_edge("give_up", "finish_turn")
         builder.add_edge("finish_turn", END)
-        self._graph = builder.compile(checkpointer=InMemorySaver())
+        self._graph = builder.compile(checkpointer=checkpointer or InMemorySaver())
 
     def ask(self, session_id: str, question: str) -> str:
         turn_start = Overwrite([{"role": "user", "content": question}])
@@ -144,7 +153,21 @@ class Agent:
         return state["messages"][-1]["content"]
 
     def history(self, session_id: str) -> list[Message]:
-        return self._graph.get_state(_thread(session_id)).values.get("messages", [])
+        """What the customer and the assistant said, without the tool calls."""
+        messages = self._graph.get_state(_thread(session_id)).values.get("messages", [])
+        return [
+            {"role": message["role"], "content": message["content"]}
+            for message in messages
+            if message["role"] in ("user", "assistant") and not message.get("tool_calls")
+        ]
+
+
+@contextmanager
+def store_agent(settings: Settings) -> Iterator[Agent]:
+    """The real agent: Ollama, the store's tools and history that survives restarts."""
+    settings.checkpoints_path.parent.mkdir(parents=True, exist_ok=True)
+    with SqliteSaver.from_conn_string(str(settings.checkpoints_path)) as checkpointer:
+        yield Agent(ollama_llm(settings), StoreTools(settings.db_path).all(), checkpointer)
 
 
 def _thread(session_id: str) -> dict:

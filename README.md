@@ -1,6 +1,6 @@
 # Question-answering agent
 
-A FastAPI service that receives questions and answers them with a LangGraph agent running on a local Ollama model. Conversations are kept per session, in memory, so they are lost when the server restarts.
+A FastAPI service that receives questions and answers them with a LangGraph agent running on a local Ollama model. Conversations are kept per session in `storage/checkpoints.db`, so they continue after the server restarts.
 
 The project represents "TOM", a customer support agent for "EMPÓRIO DA MÚSICA". It uses tools to look up products, prices, promotions, orders, installments and store policies, and to register complaints and requests for human support. The model must support tool calling.
 
@@ -40,7 +40,7 @@ Interactive docs are at http://localhost:8000/docs.
 | Endpoint | Purpose |
 |---|---|
 | `POST /chat` | Send `message` and an optional `session_id`. Returns `session_id` and `reply`, or 502 if the model is unavailable. |
-| `GET /sessions/{id}/messages` | Read a session's history. |
+| `GET /sessions/{id}/messages` | Read a session's history, without tool calls. |
 | `GET /health` | Check that the service is up. |
 
 ## Configuration
@@ -55,6 +55,7 @@ Set these as environment variables or in a `.env` file.
 | `OLLAMA_TIMEOUT` (seconds) | `300` |
 | `DATA_DIR` | `data` in the project root |
 | `DB_PATH` | `storage/emporio.db` in the project root |
+| `CHECKPOINTS_PATH` | `storage/checkpoints.db` in the project root |
 
 ## Test
 

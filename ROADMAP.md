@@ -232,8 +232,8 @@ Add one tool per commit, each with a test that calls the tool directly. Tools st
 2. Build `history()` from the graph state, without tool calls.
 
 **Done when:**
-- [ ] A conversation continues after restarting the server.
-- [ ] A failed LLM call does not break the session's next message.
+- [x] A conversation continues after restarting the server.
+- [x] A failed LLM call does not break the session's next message.
 
 ## Phase 5: Final tests
 

@@ -6,9 +6,10 @@ from pathlib import Path
 import httpx
 import ollama
 import pytest
+from langgraph.checkpoint.sqlite import SqliteSaver
 from ollama._utils import convert_function_to_tool
 
-from app.agent.graph import MAX_TOOL_ROUNDS, Agent, LLMUnavailable, ollama_llm
+from app.agent.graph import MAX_TOOL_ROUNDS, Agent, LLMUnavailable, ollama_llm, store_agent
 from app.agent.prompt import build_system_prompt
 from app.agent.tools import StoreTools
 from app.config import Settings
@@ -176,7 +177,7 @@ def test_model_can_call_several_tools_at_once():
     assert [m["content"] for m in llm.calls[1][-2:]] == ["A: R$ 100,00", "B: R$ 100,00"]
 
 
-def test_tool_results_stay_in_context():
+def test_tool_results_stay_in_context_but_not_in_history():
     llm = ScriptedLLM(call("preco", produto="GD20"), "R$ 100,00", "Isso, R$ 100,00.")
     agent = Agent(llm, [preco])
 
@@ -190,6 +191,12 @@ def test_tool_results_stay_in_context():
         "tool",
         "assistant",
         "user",
+    ]
+    assert agent.history("s1") == [
+        {"role": "user", "content": "Quanto custa?"},
+        {"role": "assistant", "content": "R$ 100,00"},
+        {"role": "user", "content": "Confirma?"},
+        {"role": "assistant", "content": "Isso, R$ 100,00."},
     ]
 
 
@@ -238,6 +245,50 @@ def test_failure_after_a_tool_call_leaves_no_trace_in_the_session():
 
     assert [m["content"] for m in llm.calls[-1][1:]] == ["primeira", "ok", "terceira"]
     assert [m["content"] for m in agent.history("s1")] == ["primeira", "ok", "terceira", "voltei"]
+
+
+def test_history_survives_a_restart_and_a_failed_call(tmp_path):
+    path = str(tmp_path / "checkpoints.db")
+    with SqliteSaver.from_conn_string(path) as saver:
+        llm = ScriptedLLM(
+            call("preco", produto="x"),
+            "R$ 100,00",
+            call("preco", produto="y"),
+            LLMUnavailable("down"),
+        )
+        agent = Agent(llm, [preco], saver)
+        agent.ask("s1", "Quanto custa?")
+        with pytest.raises(LLMUnavailable):
+            agent.ask("s1", "perdida")
+
+    with SqliteSaver.from_conn_string(path) as saver:
+        llm = ScriptedLLM("Lembro, sim.")
+        agent = Agent(llm, [preco], saver)
+        assert agent.ask("s1", "Lembra?") == "Lembro, sim."
+
+        assert [m["role"] for m in llm.calls[0]] == [
+            "system",
+            "user",
+            "assistant",
+            "tool",
+            "assistant",
+            "user",
+        ]
+        assert [m["content"] for m in agent.history("s1")] == [
+            "Quanto custa?",
+            "R$ 100,00",
+            "Lembra?",
+            "Lembro, sim.",
+        ]
+
+
+def test_store_agent_creates_the_checkpoint_folder(tmp_path):
+    path = tmp_path / "nova" / "checkpoints.db"
+    settings = Settings(SETTINGS.ollama_host, "any-model", 16384, 1.0, checkpoints_path=path)
+
+    with store_agent(settings) as agent:
+        assert agent.history("nope") == []
+    assert path.exists()
 
 
 def test_ollama_adapter_sends_tools_and_returns_plain_tool_calls(monkeypatch):
