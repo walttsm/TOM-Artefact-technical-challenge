@@ -135,10 +135,10 @@ Until Phase 4, the prompt needs its full policy text and must forbid inventing p
 6. `quality.py`: log inconsistencies without changing the data.
 
 **Done when:**
-- [ ] Row counts: 9 categories, 65 products, 25 promotions (4 active), 50 customers, 20 orders, 22 order items.
-- [ ] `Tagima Dallas Tuner Aço Natural` keeps its accent.
-- [ ] Quality report flags: orders 3 and 20 (total differs from items), products 130 and 136 (unavailable with stock), and the 3 empty categories.
-- [ ] Running the ingestion twice gives the same result.
+- [x] Row counts: 9 categories, 65 products, 25 promotions (4 active), 50 customers, 20 orders, 22 order items.
+- [x] `Tagima Dallas Tuner Aço Natural` keeps its accent.
+- [x] Quality report flags: orders 3 and 20 (total differs from items), products 130 and 136 (unavailable with stock), and the 3 empty categories.
+- [x] Running the ingestion twice gives the same result.
 
 ### 3.2 Data store, query functions
 
@@ -182,9 +182,12 @@ Pure functions with no database, so they are simple to test.
 1. `pricing.py`: `installment_plan(total)` using the tiers: up to 3x (min R$ 50), 4x to 6x (min R$ 80), 7x to 12x (min R$ 100). Use `Decimal`.
 2. `pricing.py`: `price_product(price, discount, promo_name)`. A promotion cancels the PIX discount.
 3. `availability.py`: `product_situation(status, stock)` returns `disponivel`, `esgotado`, `descontinuado` or `em_breve`. Status wins over stock.
-4. `identity.py`: `can_view_order(record, email, phone)`. An order number needs one matching contact; without a number, both contacts are required.
+4. `identity.py`: `can_view_order(record, email, phone)`. An order number needs one matching contact; without a number, both contacts are required. An email with `email_is_shared` doesn't count alone, so the phone is required.
+5. `app/ingest.py`: add a quality check for orders below the installment minimum, using the tiers from `pricing.py`. The orders stay as recorded (see `decisions.md`).
 
 **Done when:**
+- [ ] Order 10 with only `bruno.martins@jmail.com` is refused, and works with customer 11's phone.
+- [ ] The quality report flags orders 9, 16 and 18 as below the installment minimum.
 - [ ] Installments: R$ 30 gives 1x, R$ 120 gives 2x, R$ 320 gives 4x, R$ 599 gives 6x, R$ 700 gives 7x, R$ 2199 gives 12x of R$ 183,25.
 - [ ] R$ 2199 without promotion gives R$ 2089,05 on PIX.
 - [ ] R$ 2399 with 18% off gives R$ 1967,18, with no PIX price.
@@ -197,8 +200,8 @@ Add one tool per commit, each with a test that calls the tool directly. Tools st
 
 1. `consultar_politica`: read a manual section.
 2. `buscar_produtos`: `search_products` + `product_situation` + `price_product`. Hide prices for `descontinuado` and `em_breve`.
-3. `consultar_promocoes`: flag expired promotions and give no promotional price for them.
-4. `consultar_pedido`: `can_view_order` first. All failures return the same message, so they never reveal whether an order exists.
+3. `consultar_promocoes`: flag expired promotions and give no promotional price or percentage for them, listing each campaign once per product.
+4. `consultar_pedido`: `can_view_order` first. All failures return the same message, so they never reveal whether an order exists. Return the recorded total and no item prices.
 5. `calcular_parcelamento`: `installment_plan`.
 6. `registrar_encaminhamento`: returns a protocol number, for complaints and human handoff.
 7. Normalize loose arguments, since local models send values like `"8"` for `8` or a bare string for a list.

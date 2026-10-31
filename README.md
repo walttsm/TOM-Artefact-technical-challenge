@@ -16,6 +16,14 @@ py -3.12 -m venv $HOME\.venvs\emporio
 & $HOME\.venvs\emporio\Scripts\python -m pip install -r requirements.txt
 ```
 
+## Load the data
+
+Put the challenge CSV files in `data/`, then build the SQLite database in `storage/emporio.db`. Run this again whenever the CSVs change. The command replaces the tables in one transaction and logs any inconsistencies it finds in the data.
+
+```powershell
+& $HOME\.venvs\emporio\Scripts\python -m app.ingest
+```
+
 ## Run
 
 ```powershell
@@ -47,6 +55,8 @@ Set these as environment variables or in a `.env` file.
 | `OLLAMA_MODEL` | `gemma4:12b` |
 | `OLLAMA_NUM_CTX` | `16384` |
 | `OLLAMA_TIMEOUT` (seconds) | `300` |
+| `DATA_DIR` | `data` in the project root |
+| `DB_PATH` | `storage/emporio.db` in the project root |
 
 ## Test
 

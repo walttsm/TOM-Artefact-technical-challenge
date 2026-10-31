@@ -17,6 +17,8 @@ class Settings:
     # Always sent: without it Ollama may truncate the prompt silently.
     ollama_num_ctx: int
     ollama_timeout: float
+    data_dir: Path = PROJECT_ROOT / "data"
+    db_path: Path = PROJECT_ROOT / "storage" / "emporio.db"
 
 
 def get_settings() -> Settings:
@@ -25,4 +27,6 @@ def get_settings() -> Settings:
         ollama_model=os.getenv("OLLAMA_MODEL", "gemma4:12b"),
         ollama_num_ctx=int(os.getenv("OLLAMA_NUM_CTX", "16384")),
         ollama_timeout=float(os.getenv("OLLAMA_TIMEOUT", "300")),
+        data_dir=Path(os.getenv("DATA_DIR", PROJECT_ROOT / "data")),
+        db_path=Path(os.getenv("DB_PATH", PROJECT_ROOT / "storage" / "emporio.db")),
     )
