@@ -1,0 +1,14 @@
+data
+desafio_tecnico_ai_eng_artefact.pdf
+
+# Local environment and secrets
+.env
+.venv/
+
+# Generated at ingestion/runtime (derived from the ignored data folder)
+storage/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
