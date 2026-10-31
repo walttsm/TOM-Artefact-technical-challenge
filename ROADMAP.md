@@ -207,11 +207,11 @@ Add one tool per commit, each with a test that calls the tool directly. Tools st
 7. Normalize loose arguments, since local models send values like `"8"` for `8` or a bare string for a list.
 
 **Done when:**
-- [ ] `Takamine GD20`: R$ 2.199,00, R$ 2.089,05 on PIX, 12x of R$ 183,25.
-- [ ] `Giannini GF-3D` is `esgotado`, and `Shelby SN-7C` is `descontinuado` with no price.
-- [ ] `consultar_promocoes` returns 4 active promotions, and Black Friday shows as expired.
-- [ ] Order 8 with `anacarol.ferreira@coldmail.com` works; order 8 with another customer's email fails with the generic message.
-- [ ] Nothing in `app/agent` contains SQL.
+- [x] `Takamine GD20`: R$ 2.199,00, R$ 2.089,05 on PIX, 12x of R$ 183,25.
+- [x] `Giannini GF-3D` is `esgotado`, and `Shelby SN-7C` is `descontinuado` with no price.
+- [x] `consultar_promocoes` returns 4 active promotions, and Black Friday shows as expired.
+- [x] Order 8 with `anacarol.ferreira@coldmail.com` works; order 8 with another customer's email fails with the generic message.
+- [x] Nothing in `app/agent` contains SQL.
 
 ## Phase 4: Connect the assistant to the tools
 

@@ -1,4 +1,5 @@
 import ast
+import re
 from pathlib import Path
 
 import pytest
@@ -14,6 +15,15 @@ def imported_modules(path: Path) -> set[str]:
         elif isinstance(node, ast.ImportFrom) and node.module:
             modules.add(node.module)
     return modules
+
+
+def test_agent_contains_no_sql():
+    sql = re.compile(r"\b(SELECT|INSERT INTO|UPDATE|DELETE FROM|CREATE TABLE|DROP TABLE)\b")
+    files = list((PROJECT_ROOT / "app" / "agent").glob("**/*.py"))
+    assert files
+    for path in files:
+        assert "sqlite3" not in imported_modules(path), path.name
+        assert not sql.search(path.read_text(encoding="utf-8")), path.name
 
 
 @pytest.mark.parametrize(

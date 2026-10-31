@@ -144,8 +144,36 @@ R$ 479,99 in 6x is R$ 79,998, which rounds to the R$ 80 minimum. Checking the ro
 
 ### Tell `can_view_order` how the order was found
 
-The roadmap's rule differs for lookups with and without an order number, and the record alone can't show which applies. The function takes `by_order_number`, which defaults to the stricter-to-reach lookup by number and is set to `False` for lookups by contact.
+The roadmap's rule differs for lookups with and without an order number, and the record alone can't show which applies. The function takes `by_order_number`, which is `True` by default and set to `False` for lookups by contact.
 
 ### Accept a Brazilian country code in phones
 
 Customers may type `+55`, while stored phones have only the area code and number. `normalize_phone` removes the country code so the identity check compares the same format. Missing area codes are not filled in, because guessing one could match another customer.
+
+### Add a price limit to `buscar_produtos`
+
+The roadmap's tool has no budget argument, but the Phase 5 scenario "violões até R$ 1000" needs one. Without it, the model would have to pick from the first 10 of 35 products in alphabetical order and would miss cheaper ones. The limit compares the final price, so a product on promotion counts at its promotional price, and products with hidden prices are left out.
+
+### Include installments in product results
+
+The roadmap's result for `Takamine GD20` includes "12x of R$ 183,25". Returning it from `buscar_produtos` saves a second tool call and stops the model from doing the division itself.
+
+### Keep sold-out prices visible
+
+The roadmap hides prices only for `descontinuado` and `em_breve`. A sold-out product is still in the catalog and may return, so its price stays visible and the situation shows it can't be bought now.
+
+### Return formatted money as text
+
+Tools return values such as "R$ 2.199,00". Local models are likely to reformat or round raw numbers, and the text can be copied as it is.
+
+### Leave customer data out of order results
+
+`consultar_pedido` returns no name, email or phone, even after a successful check. The customer already gave a contact, and the model doesn't need the rest to report on the order.
+
+### Show expired promotions through one lookup
+
+`consultar_promocoes` takes only a term. Without one it lists active promotions, and with one it adds matching expired ones. This covers "Ainda tem Black Friday?" without the model having to decide on an `include_expired` argument, and an expired entry carries the current price instead of the old discount.
+
+### Keep the tools unregistered until Phase 4
+
+`StoreTools` isn't connected to the graph yet, as planned in step 4.1, so the current prompt's statement that the assistant can't check the store's systems is still true.

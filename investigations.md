@@ -33,3 +33,13 @@ Seen with `gemma4:12b` on 2026-10-31, in one run of 9 questions after the prompt
 
 - **Seen:** `pdfplumber` text turns tables into plain lines, such as "PIX Pagamento à vista 5% de desconto sobre o preço de" followed by "tabela".
 - **Why it matters:** The values are all there and readable, but the model has to infer the columns. Check the answers about payment (section 3) and shipping times (section 5.2) in Phase 5.
+
+### Search fails if the model puts extra words in the terms
+
+- **Seen:** Every word must match, so `["violão", "até", "1000"]` returns nothing, although the tool has a `preco_maximo` argument for this. The docstring tells the model not to include prices.
+- **Why it matters:** The customer would be told that nothing was found. No model has called the tools yet, so check this in Phase 5, and drop filler words in the tool if it happens.
+
+### Phone lookups need the area code
+
+- **Seen:** `normalize_phone` doesn't add a missing area code, so "99654-7821" doesn't match. The lookup fails with the generic message.
+- **Why it matters:** This is the safe behavior, but the message doesn't say what was wrong. The `telefone` docstring asks for the area code. Check in Phase 5 whether the model asks for it.
