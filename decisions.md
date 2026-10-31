@@ -19,11 +19,13 @@ These follow the roadmap's table in section 3.3. Tests check them, so a later pr
 
 ### Name the persona "Tom"
 
-The name comes from the earlier build. It isn't in the manual.
+Joke from the brazilian translation of the word "tom" that translates to "tone" in english. It resembles music while sounding familiar and human-like.
 
 ### Don't name other stores
 
 The manual says to suggest partner stores when possible, but no list of them exists. Naming one would mean inventing it, so the prompt redirects accessory requests without naming any store.
+
+Should the policy manual have other stores to recommend they could have been implemented as a policy rule, or database lookup reference.
 
 ### Present campaigns as typical, not active
 
@@ -253,3 +255,5 @@ The model said "pode devolver sim" before knowing how the customer bought. The a
 ### Leave Docker out for now
 
 The brief doesn't ask for it, and Ollama and its model would still be installed on the host. The README lists it under what could be done with more time.
+
+Should we use an external model API such as OpenAI, anthropic or Google, the dockerization would be easier and viable for a MVP.

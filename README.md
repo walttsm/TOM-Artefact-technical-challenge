@@ -162,6 +162,7 @@ The source values are kept, because nothing shows which conflicting value is rig
 ## With more time
 
 - Compare models systematically, with an automated evaluation of the scenarios over repeated runs.
+- Try external LLM APIs, which could improve answer quality and speed at the cost of API fees and of sending customer data to a third party.
 - Add authentication, rate limiting, and expiry and trimming for history.
 - Make handoffs idempotent and notify the team.
 - Add fuzzy product search and a shipping quote.
