@@ -118,3 +118,18 @@ Deciding availability belongs to `policy`, but the roadmap puts this filter in t
 ### Keep handoffs out of the rebuild
 
 The `handoffs` table is the only one created with `IF NOT EXISTS` and not dropped by `schema.sql`. Handoffs happen at runtime and exist nowhere else, so re-ingestion must not erase them.
+
+### Correct two more statements in the manual
+
+Besides the roadmap's four contradictions, the parser removes two statements, because `consultar_politica` would otherwise hand them to the model:
+
+| Statement | Decision | Why |
+|---|---|---|
+| "Mais de 300 instrumentos" | Removed | The catalog has 65 products, and the assistant could repeat a number the data contradicts. |
+| "Sugerir lojas parceiras quando possível" | Removed | No list of partner stores exists, and the prompt already forbids naming stores. |
+
+Each correction targets one section, so the valid "parcela mínima de R$ 100,00" in section 3.1 stays while the same phrase in section 3 changes. A correction that stops matching logs a warning, and a test fails if that happens with the current manual.
+
+### Return subsections with their section
+
+Asking for section "5" also returns 5.1, 5.2 and 5.3, because most of the rules sit in subsections and the top-level text alone would look like a complete answer.

@@ -171,9 +171,9 @@ Every query is parameterized and returns plain records with no calculated prices
 4. `store/policy_sections.py` and the ingestion step that saves the sections.
 
 **Done when:**
-- [ ] Sections 1 to 10 are found, and section 5.2 continues across its page break.
-- [ ] The list in 7.2 stays inside 7.2.
-- [ ] No "Página N" text remains, and the wrong phone number and email are gone.
+- [x] Sections 1 to 10 are found, and section 5.2 continues across its page break.
+- [x] The list in 7.2 stays inside 7.2.
+- [x] No "Página N" text remains, and the wrong phone number and email are gone.
 
 ### 3.4 Policy layer, business rules
 

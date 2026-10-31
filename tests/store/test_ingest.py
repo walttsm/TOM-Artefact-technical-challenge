@@ -6,6 +6,7 @@ import pytest
 
 from app.config import PROJECT_ROOT
 from app.ingest import IngestionError, ingest
+from app.policy.manual import ManualSection, parse_manual
 from app.store.loader import CSV_NAME, to_search_text
 
 REAL_DATA = PROJECT_ROOT / "data"
@@ -40,6 +41,17 @@ SAMPLE_CSVS = {
 2,1,11
 """,
 }
+
+
+@pytest.fixture(autouse=True)
+def sample_manual(monkeypatch):
+    """Sample data has no PDF, and no library here can write one."""
+    monkeypatch.setattr(
+        "app.ingest.parse_manual",
+        lambda path: parse_manual(path)
+        if path.exists()
+        else [ManualSection("1", "Sobre", "Texto")],
+    )
 
 
 def write_csvs(data_dir: Path, **overrides: str) -> Path:
@@ -167,6 +179,19 @@ def test_missing_file_keeps_previous_data(tmp_path):
     ingest(data_dir, db_path)
     before = dump(db_path)
     (data_dir / CSV_NAME.format(table="order_items")).unlink()
+
+    with pytest.raises(FileNotFoundError):
+        ingest(data_dir, db_path)
+
+    assert dump(db_path) == before
+
+
+def test_missing_manual_keeps_previous_data(tmp_path, monkeypatch):
+    db_path = tmp_path / "test.db"
+    data_dir = write_csvs(tmp_path / "data")
+    ingest(data_dir, db_path)
+    before = dump(db_path)
+    monkeypatch.setattr("app.ingest.parse_manual", parse_manual)
 
     with pytest.raises(FileNotFoundError):
         ingest(data_dir, db_path)

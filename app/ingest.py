@@ -1,11 +1,14 @@
 import logging
 import sqlite3
 from contextlib import closing
+from dataclasses import asdict
 from pathlib import Path
 
 from app.config import get_settings
+from app.policy.manual import MANUAL_NAME, parse_manual
 from app.store.database import connect_for_writing, create_schema
 from app.store.loader import load_catalog, load_orders
+from app.store.policy_sections import save_sections
 from app.store.quality import Inconsistency, find_inconsistencies
 
 logger = logging.getLogger(__name__)
@@ -31,6 +34,7 @@ def ingest(data_dir: Path, db_path: Path) -> list[Inconsistency]:
             load_catalog(conn, data_dir)
             load_orders(conn, data_dir)
             _check_foreign_keys(conn)
+            save_sections(conn, map(asdict, parse_manual(data_dir / MANUAL_NAME)))
         except Exception:
             conn.execute("ROLLBACK")
             raise

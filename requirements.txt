@@ -2,6 +2,7 @@ fastapi==0.162.0
 httpx==0.28.1
 langgraph==1.2.19
 ollama==0.6.3
+pdfplumber==0.11.10
 pytest==9.2.0
 python-dotenv==1.2.4
 tzdata==2026.6

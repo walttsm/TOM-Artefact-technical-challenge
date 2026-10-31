@@ -18,7 +18,7 @@ py -3.12 -m venv $HOME\.venvs\emporio
 
 ## Load the data
 
-Put the challenge CSV files in `data/`, then build the SQLite database in `storage/emporio.db`. Run this again whenever the CSVs change. The command replaces the tables in one transaction and logs any inconsistencies it finds in the data.
+Put the challenge CSV files and the store manual PDF in `data/`, then build the SQLite database in `storage/emporio.db`. Run this again whenever the CSVs change. The command replaces the tables in one transaction and logs any inconsistencies it finds in the data.
 
 ```powershell
 & $HOME\.venvs\emporio\Scripts\python -m app.ingest

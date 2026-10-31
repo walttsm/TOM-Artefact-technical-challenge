@@ -1,3 +1,4 @@
+DROP TABLE IF EXISTS policy_sections;
 DROP TABLE IF EXISTS order_items;
 DROP TABLE IF EXISTS orders;
 DROP TABLE IF EXISTS customers;
@@ -70,6 +71,13 @@ CREATE TABLE order_items (
     product_id INTEGER NOT NULL REFERENCES products (product_id),
     quantity INTEGER NOT NULL CHECK (quantity > 0),
     PRIMARY KEY (order_id, product_id)
+) STRICT;
+
+CREATE TABLE policy_sections (
+    position INTEGER PRIMARY KEY,
+    number TEXT NOT NULL UNIQUE,
+    title TEXT NOT NULL,
+    body TEXT NOT NULL
 ) STRICT;
 
 -- Not in the DROP list above: handoffs are created at runtime and must survive re-ingestion.
