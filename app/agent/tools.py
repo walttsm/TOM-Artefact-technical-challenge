@@ -23,7 +23,7 @@ from app.store.policy_sections import list_sections, read_section
 
 ORDER_NOT_FOUND = (
     "Não foi possível localizar um pedido com os dados informados. "
-    "Peça ao cliente para conferir o número do pedido, o e-mail e o telefone."
+    "Peça ao cliente para conferir o número do pedido, o e-mail e o telefone com DDD."
 )
 PRICE_HIDDEN = {
     "descontinuado": "Produto fora do catálogo: sem preço. Ofereça modelos equivalentes.",
@@ -219,7 +219,9 @@ class StoreTools:
         Args:
             termos: Palavras do produto, como ["takamine", "gd20"]. Não inclua preços.
             categoria: Nome da categoria, como "violões".
-            apenas_disponiveis: Se verdadeiro, retorna só o que pode ser vendido agora.
+            apenas_disponiveis: Se verdadeiro, retorna só o que pode ser vendido agora. Use em
+                listas abertas. Não use ao procurar um modelo específico, ou a situação dele
+                não aparece.
             preco_maximo: Maior preço aceito pelo cliente, em reais.
             limite: Quantidade máxima de produtos retornados.
         """
@@ -326,7 +328,7 @@ class StoreTools:
     def registrar_encaminhamento(self, tipo: str, resumo: str, contato: str) -> str:
         """Registra uma reclamação ou um pedido para falar com a equipe e gera um protocolo.
 
-        Só diga que registrou depois de receber o protocolo desta ferramenta.
+        Não precisa de número de pedido. Só diga que registrou depois de receber o protocolo desta ferramenta.
 
         Args:
             tipo: "reclamacao" ou "atendimento_humano".

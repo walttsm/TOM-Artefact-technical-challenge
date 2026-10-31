@@ -3,6 +3,7 @@
 import logging
 from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
+from inspect import signature
 from operator import add
 from typing import Annotated, Any, Literal, NotRequired, TypedDict
 
@@ -96,7 +97,14 @@ def _run_tool(tools: dict[str, Tool], call: ToolCall) -> Message:
     try:
         if name not in tools:
             raise ValueError(f"essa ferramenta não existe. Use uma destas: {', '.join(tools)}.")
-        content = tools[name](**call["function"]["arguments"])
+        arguments = call["function"]["arguments"]
+        accepted = signature(tools[name]).parameters
+        if unknown := [argument for argument in arguments if argument not in accepted]:
+            raise ValueError(
+                f"argumentos inválidos: {', '.join(unknown)}. "
+                f"Chame de novo usando estes: {', '.join(accepted)}."
+            )
+        content = tools[name](**arguments)
     except Exception as exc:
         # The model reads the error and can fix its arguments or explain the problem.
         logger.warning("Tool %s failed: %s", name, exc)

@@ -205,7 +205,7 @@ def test_tool_results_stay_in_context_but_not_in_history():
     [
         (call("quebrada"), "banco fora do ar"),
         (call("inexistente"), "preco, quebrada"),
-        (call("preco", errado=1), "errado"),
+        (call("preco", errado=1), "errado. Chame de novo usando estes: produto."),
     ],
 )
 def test_tool_error_goes_back_to_the_model_as_text(reply, expected):

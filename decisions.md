@@ -223,3 +223,33 @@ The Phase 2 rule was due for review now that handoffs exist. The team receives w
 ### Keep `gemma4:12b` as the default model
 
 All six installed models report the `tools` capability, and `gemma4:12b` and `qwen3:8b` were run with tools. `gemma4:12b` used the correct tools with exact values. `qwen3:8b` also called the tools, but it didn't register a complaint and offered a notification the assistant can't send. The full comparison is part of Phase 5.
+
+## Phase 5: Final tests
+
+### Tell the model how to correct a wrong argument
+
+`gemma4:12b` once sent `term` instead of `termos`. Python's error reached the model, which then told the customer the product wasn't found. The error now names the valid arguments and asks for a new call, and the same mistake didn't come back in later runs.
+
+### Tell the model when not to filter by availability
+
+With `apenas_disponiveis`, a search for a sold-out model returns nothing, so the assistant can't say it is `esgotado`. The docstring and the prompt now keep this filter for open lists.
+
+### Separate complaints from order lookups
+
+Asked to handle a late order, `gemma4:12b` kept asking for the order number, as if it were a lookup, and never registered the complaint. The prompt now says that a complaint about an order goes to `registrar_encaminhamento` and needs only a contact.
+
+### State what the assistant can't do
+
+The model offered shipping quotes by postal code, and `qwen3:8b` offered to notify a customer when a product returned. The prompt now says the assistant doesn't quote shipping, reserve products, send notices or start returns.
+
+### Wait for the purchase channel before answering about returns
+
+The model said "pode devolver sim" before knowing how the customer bought. The answer depends on the channel, so the prompt now holds it back until the channel and the date are known.
+
+### Generate examples from a copy of the database
+
+`scripts/generate_examples.py` registers real handoffs when it runs a complaint. Working on a temporary copy keeps the store's data clean and makes the protocol number in the sample stable.
+
+### Leave Docker out for now
+
+The brief doesn't ask for it, and Ollama and its model would still be installed on the host. The README lists it under what could be done with more time.

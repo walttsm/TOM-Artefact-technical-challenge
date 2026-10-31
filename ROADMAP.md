@@ -88,7 +88,7 @@ On Windows, create the venv at a short path such as `~\.venvs\emporio`. The proj
 
 **Done when:**
 - [x] `pytest` runs.
-- [ ] Dependencies install from a fresh venv.
+- [x] Dependencies install from a fresh venv.
 
 ### 1.2 FastAPI and LangGraph on Ollama
 
@@ -263,7 +263,7 @@ Run these with the real model and read the answers. Fix problems in the prompt, 
 Compare at least two local models and note the results. In that earlier build, `qwen3:8b` invented rules, so don't assume any model is reliable until you've read its output.
 
 **Done when:**
-- [ ] Every scenario passes, or its failure is written down as a known limitation.
+- [x] Every scenario passes on `gemma4:12b`, or its failure is written down as a known limitation. The comparison with other models is still open.
 
 ### 5.2 Deliverables
 
@@ -278,7 +278,7 @@ Compare at least two local models and note the results. In that earlier build, `
 
 **Done when:**
 - [ ] A fresh clone runs by following only the README, with `data/` copied in. If `data/` stays gitignored, the README must say where the files go.
-- [ ] `pytest` passes without Ollama.
+- [x] `pytest` passes without Ollama.
 - [ ] The repo contains no `.env` or `storage/`.
 - [ ] Submit the link before the deadline, and don't change the repo after it.
 
