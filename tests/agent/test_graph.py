@@ -91,3 +91,19 @@ def test_prompt_includes_current_date():
     prompt = build_system_prompt(datetime(2026, 10, 31, 16, 30))
     assert "português" in prompt
     assert "31/10/2026 16:30" in prompt
+
+
+def test_prompt_has_store_rules():
+    prompt = build_system_prompt()
+    assert "Empório da Música" in prompt
+    assert "exclusivamente instrumentos musicais" in prompt
+    assert "palhetas" in prompt
+
+
+def test_prompt_resolves_manual_contradictions():
+    prompt = build_system_prompt()
+    assert "(67) 3341-4444" in prompt
+    assert "contato@emporiodamusica.com.br" in prompt
+    assert "3321-4500" not in prompt
+    assert "empóriodamusica" not in prompt
+    assert "parcela mínima de R$ 50,00" in prompt
