@@ -177,3 +177,45 @@ Tools return values such as "R$ 2.199,00". Local models are likely to reformat o
 ### Keep the tools unregistered until Phase 4
 
 `StoreTools` isn't connected to the graph yet, as planned in step 4.1, so the current prompt's statement that the assistant can't check the store's systems is still true.
+
+## Phase 4: Connect the assistant to the tools
+
+### Make the LLM return a message
+
+The `LLM` type took messages and returned text, so it couldn't express a tool call. It now takes messages and tools, and returns an assistant message with an answer, tool calls or both. Messages use Ollama's chat format in plain dicts, because Ollama's response objects would have to be stored in the checkpoints. An empty answer with no tool calls still counts as a failure, while an empty answer with tool calls is normal.
+
+### Declare one type per tool argument
+
+The tools accepted types such as `list[str] | str | None`, and Ollama's schema converter turned that into `"array, string"`, which isn't a valid JSON Schema type. It also marked `limite` and `apenas_disponiveis` as required because their defaults weren't `None`. The signatures now state only what the model is asked to send, and all optional arguments default to `None`. Normalization stays, since local models still send loose values, and a test pins the schemas.
+
+### Keep the turn in progress apart from the history
+
+The state has `messages` for finished turns and `turn` for the current one. Tool calls enter `turn` during the turn, and `finish_turn` moves them to `messages` once there is an answer. A new question overwrites `turn`, so a turn that failed halfway leaves nothing behind, including in the checkpoint database.
+
+### Keep tool results in the conversation context
+
+Finished turns keep their tool calls and results, so a follow-up such as "em quantas vezes posso parcelar?" needs no new lookup. The cost is a larger context on long conversations, already listed as a known limitation.
+
+### End the turn at the round limit without another model call
+
+`MAX_TOOL_ROUNDS` is 5, and the conversations so far needed at most 2 tool calls per turn. Reaching the limit returns a fixed message with the WhatsApp number. The check runs after the tools, so every stored call has its result and the session's next message is still valid.
+
+### Send every tool error to the model
+
+Unknown tools, wrong arguments and exceptions all return as `Erro ao executar ...`, with a warning in the log. The model can fix its arguments or tell the customer it couldn't check. Only LLM failures stop the turn, with a 502.
+
+### Register complaints without an order number
+
+In the first run with tools, `gemma4:12b` asked for an order number before registering a complaint from a customer who had already given a phone. The prompt now says a contact is enough, and the next run returned a protocol number.
+
+### Treat a budget of zero as no budget
+
+`qwen3:8b` sent `preco_maximo: 0` with an unrelated question. This filtered out every product, and the assistant said the Martin D-28 was out of stock, so `buscar_produtos` now ignores a zero budget.
+
+### Replace "this conversation doesn't reach the team"
+
+The Phase 2 rule was due for review now that handoffs exist. The team receives what `registrar_encaminhamento` records and nothing else, and the prompt says so.
+
+### Keep `gemma4:12b` as the default model
+
+All six installed models report the `tools` capability, and `gemma4:12b` and `qwen3:8b` were run with tools. `gemma4:12b` used the correct tools with exact values. `qwen3:8b` also called the tools, but it didn't register a complaint and offered a notification the assistant can't send. The full comparison is part of Phase 5.

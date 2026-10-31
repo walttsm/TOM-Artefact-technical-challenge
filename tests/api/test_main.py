@@ -5,7 +5,10 @@ from app.agent.graph import Agent, LLMUnavailable
 from app.api.main import create_app
 
 
-def client_with(llm) -> TestClient:
+def client_with(answer) -> TestClient:
+    def llm(messages, tools):
+        return {"role": "assistant", "content": answer(messages)}
+
     return TestClient(create_app(Agent(llm)))
 
 

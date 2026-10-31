@@ -2,9 +2,7 @@
 
 A FastAPI service that receives questions and answers them with a LangGraph agent running on a local Ollama model. Conversations are kept per session, in memory, so they are lost when the server restarts.
 
-The project is represents "TOM", a customer support agent for "EMPÓRIO DA MÚSICA". It anwers questions regarding the current company policies and some store information, such as address, name and other contact channels. 
-
-More capabilities will be added.
+The project represents "TOM", a customer support agent for "EMPÓRIO DA MÚSICA". It uses tools to look up products, prices, promotions, orders, installments and store policies, and to register complaints and requests for human support. The model must support tool calling.
 
 ## Setup
 
@@ -33,7 +31,7 @@ Put the challenge CSV files and the store manual PDF in `data/`, then build the 
 Ask a question, then pass the returned `session_id` to continue the conversation:
 
 ```powershell
-$body = @{ message = "Qual é a capital do Mato Grosso do Sul?" } | ConvertTo-Json
+$body = @{ message = "Quanto custa o Takamine GD20?" } | ConvertTo-Json
 Invoke-RestMethod http://localhost:8000/chat -Method Post -ContentType "application/json; charset=utf-8" -Body ([Text.Encoding]::UTF8.GetBytes($body))
 ```
 

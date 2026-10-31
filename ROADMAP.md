@@ -223,8 +223,8 @@ Add one tool per commit, each with a test that calls the tool directly. Tools st
 4. Add `MAX_TOOL_ROUNDS` with a graceful fallback message, and send tool errors back to the model as text.
 
 **Done when:**
-- [ ] Graph tests with a scripted fake cover a tool call, a tool error and the round limit, without Ollama.
-- [ ] A real conversation answers a price question using `buscar_produtos`.
+- [x] Graph tests with a scripted fake cover a tool call, a tool error and the round limit, without Ollama.
+- [x] A real conversation answers a price question using `buscar_produtos`.
 
 ### 4.2 Persistent history
 
@@ -287,6 +287,7 @@ Compare at least two local models and note the results. In that earlier build, `
 - Production would need API authentication and rate limiting: anyone with a `session_id` can read that conversation.
 - History stores personal data in plain text and has no size limit or expiry.
 - Handoffs are saved but notify no one.
+- If the LLM fails after `registrar_encaminhamento` ran, the handoff stays saved while the turn is lost, so a retry can register it twice.
 - The agent has no holiday calendar and no shipping calculation by postal code.
 - Product search is keyword-based and doesn't handle typos.
 - Identity validation is basic, which suits a prototype only.

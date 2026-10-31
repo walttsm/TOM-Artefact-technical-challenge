@@ -96,6 +96,10 @@ def test_budget_uses_the_final_price_and_skips_hidden_prices(tools):
     assert call(tools.buscar_produtos, ["Shelby SN-7C"], preco_maximo=99999)["produtos"] == []
 
 
+def test_budget_of_zero_means_no_budget(tools):
+    assert call(tools.buscar_produtos, ["Ohana CK-20"], preco_maximo=0)["total_encontrado"] == 1
+
+
 def test_available_violoes_under_a_budget(tools):
     result = call(
         tools.buscar_produtos, categoria="violões", apenas_disponiveis=True, preco_maximo=1000

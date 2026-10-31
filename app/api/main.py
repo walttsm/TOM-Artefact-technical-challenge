@@ -1,11 +1,13 @@
 """HTTP interface. Run with: uvicorn app.api.main:app"""
 
+from typing import Any
 from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 from app.agent.graph import Agent, LLMUnavailable, ollama_llm
+from app.agent.tools import StoreTools
 from app.config import get_settings
 
 
@@ -22,7 +24,8 @@ class ChatResponse(BaseModel):
 
 
 def create_app(agent: Agent | None = None) -> FastAPI:
-    agent = agent or Agent(ollama_llm(get_settings()))
+    settings = get_settings()
+    agent = agent or Agent(ollama_llm(settings), StoreTools(settings.db_path).all())
     app = FastAPI(title="Agente de perguntas e respostas")
 
     @app.get("/health")
@@ -39,7 +42,7 @@ def create_app(agent: Agent | None = None) -> FastAPI:
         return ChatResponse(session_id=session_id, reply=reply)
 
     @app.get("/sessions/{session_id}/messages")
-    def messages(session_id: str) -> dict[str, list[dict[str, str]]]:
+    def messages(session_id: str) -> dict[str, list[dict[str, Any]]]:
         return {"messages": agent.history(session_id)}
 
     return app

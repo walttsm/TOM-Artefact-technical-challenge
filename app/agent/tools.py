@@ -44,7 +44,9 @@ def _to_json(data: dict) -> str:
     return json.dumps(data, ensure_ascii=False)
 
 
-# Local models send loose arguments, such as "8" for 8 or a bare string for a list.
+# The signatures state the types the model is asked for, since they become its tool
+# schemas. Local models still send loose arguments, such as "8" for 8 or a bare string
+# for a list, so every argument goes through one of these.
 def _as_text(value: Any) -> str | None:
     if value is None:
         return None
@@ -206,11 +208,11 @@ class StoreTools:
 
     def buscar_produtos(
         self,
-        termos: list[str] | str | None = None,
+        termos: list[str] | None = None,
         categoria: str | None = None,
-        apenas_disponiveis: bool = False,
-        preco_maximo: float | str | None = None,
-        limite: int | str = 10,
+        apenas_disponiveis: bool | None = None,
+        preco_maximo: float | None = None,
+        limite: int | None = None,
     ) -> str:
         """Busca instrumentos no catálogo, com situação, preços e parcelamento.
 
@@ -231,8 +233,9 @@ class StoreTools:
                 _as_bool(apenas_disponiveis),
                 limit=None,
             )
-        if maximum is not None:
-            rows = [row for row in rows if self._fits_budget(row, maximum)]
+        # Local models fill optional arguments with 0, which is never a real budget.
+        if maximum:
+            rows =[row for row in rows if self._fits_budget(row, maximum)]
         return _to_json(
             {
                 "total_encontrado": len(rows),
@@ -265,7 +268,7 @@ class StoreTools:
 
     def consultar_pedido(
         self,
-        numero_pedido: int | str | None = None,
+        numero_pedido: int | None = None,
         email: str | None = None,
         telefone: str | None = None,
     ) -> str:
@@ -299,7 +302,7 @@ class StoreTools:
             ]
         return _to_json({"pedidos": views} if views else {"erro": ORDER_NOT_FOUND})
 
-    def calcular_parcelamento(self, valor: float | str) -> str:
+    def calcular_parcelamento(self, valor: float) -> str:
         """Calcula as opções de parcelamento sem juros no cartão de crédito.
 
         Args:
