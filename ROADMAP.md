@@ -116,8 +116,8 @@ Until Phase 4, the prompt needs its full policy text and must forbid inventing p
 
 **Done when:**
 - [x] The prompt loads and includes the current date.
-- [ ] Rules are in Portuguese and accessories are out of scope.
-- [ ] A real conversation answers "Qual o endereço da loja?".
+- [x] Rules are in Portuguese and accessories are out of scope.
+- [x] A real conversation answers "Qual o endereço da loja?".
 
 ## Phase 3: Create tooling
 
