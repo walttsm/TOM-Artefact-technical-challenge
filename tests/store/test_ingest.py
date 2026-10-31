@@ -116,6 +116,7 @@ def test_reports_inconsistencies_without_changing_data(tmp_path):
         ("shared_email", "ana@jmail.com"),
         ("ordered_before_release", 2),
         ("repeated_promotion", 10),
+        ("below_installment_minimum", 1),
     }
     assert all(item.treatment for item in report)
     with closing(read_db(db_path)) as conn:
@@ -244,6 +245,7 @@ def test_real_data_quality_report(tmp_path):
     assert by_kind["shared_email"] == {"bruno.martins@jmail.com"}
     assert by_kind["ordered_before_release"] == {3, 14}
     assert by_kind["repeated_promotion"] == {93, 96}
+    assert by_kind["below_installment_minimum"] == {9, 16, 18}
 
 
 @needs_real_data

@@ -9,6 +9,7 @@ TREATMENTS = {
     "shared_email": "keep both customers; the email alone proves no identity, so require the phone",
     "ordered_before_release": "keep the order; report its recorded status and promise no delivery",
     "repeated_promotion": "keep both rows; show expired promotions once, with no percentage",
+    "below_installment_minimum": "keep the order; the current minimums apply only to new quotes",
 }
 
 
@@ -126,6 +127,18 @@ def _repeated_promotions(conn: sqlite3.Connection) -> list[Inconsistency]:
         )
         for row in rows
     ]
+
+
+def list_credit_orders(conn: sqlite3.Connection) -> list[dict]:
+    rows = conn.execute(
+        """
+        SELECT order_id, total_brl, payment_method
+        FROM orders
+        WHERE payment_method LIKE 'credit\\_%' ESCAPE '\\'
+        ORDER BY order_id
+        """
+    )
+    return [dict(row) for row in rows]
 
 
 def find_inconsistencies(conn: sqlite3.Connection) -> list[Inconsistency]:

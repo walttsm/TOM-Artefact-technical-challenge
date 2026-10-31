@@ -18,7 +18,10 @@ def imported_modules(path: Path) -> set[str]:
 
 @pytest.mark.parametrize(
     ("layer", "forbidden"),
-    [("store", ("app.policy", "app.agent", "app.api"))],
+    [
+        ("store", ("app.policy", "app.agent", "app.api")),
+        ("policy", ("sqlite3", "app.store", "app.agent", "app.api")),
+    ],
 )
 def test_layer_imports(layer, forbidden):
     files = list((PROJECT_ROOT / "app" / layer).glob("**/*.py"))

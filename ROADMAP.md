@@ -186,13 +186,13 @@ Pure functions with no database, so they are simple to test.
 5. `app/ingest.py`: add a quality check for orders below the installment minimum, using the tiers from `pricing.py`. The orders stay as recorded (see `decisions.md`).
 
 **Done when:**
-- [ ] Order 10 with only `bruno.martins@jmail.com` is refused, and works with customer 11's phone.
-- [ ] The quality report flags orders 9, 16 and 18 as below the installment minimum.
-- [ ] Installments: R$ 30 gives 1x, R$ 120 gives 2x, R$ 320 gives 4x, R$ 599 gives 6x, R$ 700 gives 7x, R$ 2199 gives 12x of R$ 183,25.
-- [ ] R$ 2199 without promotion gives R$ 2089,05 on PIX.
-- [ ] R$ 2399 with 18% off gives R$ 1967,18, with no PIX price.
-- [ ] Product 130 (`coming_soon`, stock 2) is `em_breve`, and a stock of 0 is `esgotado`.
-- [ ] Nothing in `app/policy` imports `sqlite3`, `app/store` or `app/agent`.
+- [x] Order 10 with only `bruno.martins@jmail.com` is refused, and works with customer 11's phone.
+- [x] The quality report flags orders 9, 16 and 18 as below the installment minimum.
+- [x] Installments: R$ 30 gives 1x, R$ 120 gives 2x, R$ 320 gives 4x, R$ 599 gives 6x, R$ 700 gives 7x, R$ 2199 gives 12x of R$ 183,25.
+- [x] R$ 2199 without promotion gives R$ 2089,05 on PIX.
+- [x] R$ 2399 with 18% off gives R$ 1967,18, with no PIX price.
+- [x] Product 130 (`coming_soon`, stock 2) is `em_breve`, and a stock of 0 is `esgotado`.
+- [x] Nothing in `app/policy` imports `sqlite3`, `app/store` or `app/agent`.
 
 ### 3.5 Agent tools
 

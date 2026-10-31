@@ -133,3 +133,19 @@ Each correction targets one section, so the valid "parcela mínima de R$ 100,00"
 ### Return subsections with their section
 
 Asking for section "5" also returns 5.1, 5.2 and 5.3, because most of the rules sit in subsections and the top-level text alone would look like a complete answer.
+
+### Allow one payment below R$ 50
+
+The manual's lowest tier sets a R$ 50 minimum for "up to 3x", but a R$ 30 purchase must still be payable, and the roadmap expects 1x for it. The minimum therefore applies only from 2x up.
+
+### Check installment minimums on the exact division
+
+R$ 479,99 in 6x is R$ 79,998, which rounds to the R$ 80 minimum. Checking the rounded value would allow a plan below the minimum, so the check uses the unrounded division and rounding applies only to the value shown.
+
+### Tell `can_view_order` how the order was found
+
+The roadmap's rule differs for lookups with and without an order number, and the record alone can't show which applies. The function takes `by_order_number`, which defaults to the stricter-to-reach lookup by number and is set to `False` for lookups by contact.
+
+### Accept a Brazilian country code in phones
+
+Customers may type `+55`, while stored phones have only the area code and number. `normalize_phone` removes the country code so the identity check compares the same format. Missing area codes are not filled in, because guessing one could match another customer.
