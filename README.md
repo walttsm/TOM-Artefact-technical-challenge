@@ -2,6 +2,10 @@
 
 A FastAPI service that receives questions and answers them with a LangGraph agent running on a local Ollama model. Conversations are kept per session, in memory, so they are lost when the server restarts.
 
+The project is represents "TOM", a customer support agent for "EMPÓRIO DA MÚSICA". It anwers questions regarding the current company policies and some store information, such as address, name and other contact channels. 
+
+More capabilities will be added.
+
 ## Setup
 
 Requires Python 3.12 and [Ollama](https://ollama.com). On Windows, keep the venv at a short path, because the project path is too long for some package files.
@@ -51,3 +55,7 @@ The tests use a scripted LLM, so they don't need Ollama.
 ```powershell
 & $HOME\.venvs\emporio\Scripts\python -m pytest
 ```
+
+## About AI usage
+
+This project has used claude code to accelerate and help in the development process. For now, consult ROADMAP.md for more information on the implementation. The prompt for the agent was created automatically by AI for now.
