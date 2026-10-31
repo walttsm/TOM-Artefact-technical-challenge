@@ -90,7 +90,8 @@ def test_ollama_timeout_becomes_llm_unavailable(monkeypatch):
 def test_prompt_includes_current_date():
     prompt = build_system_prompt(datetime(2026, 10, 31, 16, 30))
     assert "português" in prompt
-    assert "31/10/2026 16:30" in prompt
+    assert "sábado, 31/10/2026 16:30" in prompt
+    assert "domingo, 01/11/2026" in build_system_prompt(datetime(2026, 11, 1, 9, 0))
 
 
 def test_prompt_has_store_rules():
