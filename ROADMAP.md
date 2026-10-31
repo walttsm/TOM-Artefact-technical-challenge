@@ -277,9 +277,9 @@ Compare at least two local models and note the results. In that earlier build, `
 3. Push to a public GitHub repository and do a final check from a fresh clone.
 
 **Done when:**
-- [ ] A fresh clone runs by following only the README, with `data/` copied in. If `data/` stays gitignored, the README must say where the files go.
+- [x] A fresh clone runs by following only the README, with `data/` copied in. If `data/` stays gitignored, the README must say where the files go.
 - [x] `pytest` passes without Ollama.
-- [ ] The repo contains no `.env` or `storage/`.
+- [x] The repo contains no `.env` or `storage/`.
 - [ ] Submit the link before the deadline, and don't change the repo after it.
 
 ## Known limitations to plan for
