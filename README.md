@@ -99,7 +99,7 @@ The manual is short and already numbered, so the prompt holds an index and `cons
 
 ### LangGraph
 
-The agent is a small explicit graph: `agent <-> tools`, with a round limit. LangGraph supplies the checkpoints and per-session threads. The turn in progress is kept apart from the finished history, so a model failure partway through a turn leaves the session intact.
+The agent is a small explicit graph: `compact -> agent <-> tools`, with a round limit, where `compact` summarizes long conversations. LangGraph supplies the checkpoints and per-session threads. The turn in progress is kept apart from the finished history, so a model failure partway through a turn leaves the session intact.
 
 ### Ollama and `gemma4:12b`
 
@@ -112,6 +112,10 @@ The prompt holds what applies to every message: persona, service flow, store det
 ### History in SQLite
 
 Support conversations continue over time, so sessions survive a server restart through LangGraph's `SqliteSaver`. Checkpoints sit in a separate file from the store's data.
+
+### Summaries for long conversations
+
+Ollama drops the start of a prompt that doesn't fit `num_ctx`, without warning. Before each turn, the agent estimates the context, and above 60% of `num_ctx` it folds the oldest turns into a summary written by the model, keeping the two most recent turns whole. The summary leaves out prices and order status, which the model looks up again. The history the API returns stays complete.
 
 ### Masked personal data
 
@@ -158,7 +162,7 @@ The source values are kept, because nothing shows which conflicting value is rig
 - **Follow-up questions:** the model can reuse earlier tool results, so prices in a long conversation can be out of date.
 - **Security:** the API has no authentication or rate limiting, so anyone with a `session_id` can read that conversation. Identity checks are basic and suit a prototype only.
 - **Personal data:** emails and phones are masked before they reach the model or the history, and CPF and card numbers are removed. Names are not detected, and after a restart the customer has to give their contact again.
-- **Context size:** history has no size limit, so a very long session can exceed `num_ctx`.
+- **Context size:** the context is estimated from characters, not counted, and a single turn with many large tool results is not summarized until the next turn.
 - **Handoffs:** they are saved but notify no one. If the model fails right after registering one, a retry can register it twice.
 - **Search:** it is keyword-based, doesn't handle typos, and matches words in descriptions, so a search can include a related product. A term combining a campaign and a product returns nothing.
 - **Missing features:** there is no shipping calculation by postal code, holiday calendar, purchase channel or real delivery date.

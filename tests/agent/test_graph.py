@@ -10,8 +10,17 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.checkpoint.sqlite import SqliteSaver
 from ollama._utils import convert_function_to_tool
 
-from app.agent.graph import MAX_TOOL_ROUNDS, Agent, LLMUnavailable, ollama_llm, store_agent
-from app.agent.prompt import build_system_prompt
+from app.agent.graph import (
+    COMPACT_AT,
+    MAX_TOOL_ROUNDS,
+    SUMMARY_HEADING,
+    Agent,
+    LLMUnavailable,
+    estimate_tokens,
+    ollama_llm,
+    store_agent,
+)
+from app.agent.prompt import build_summary_prompt, build_system_prompt
 from app.agent.tools import StoreTools
 from app.config import Settings
 from app.store.database import connect_read_only
@@ -487,3 +496,83 @@ def test_session_is_checked_between_scans():
     clock.offset = timedelta(minutes=2)
 
     assert agent.history("s1") == []
+
+
+# Each question is about 1000 tokens. The budget is passed when a fourth one arrives.
+QUESTIONS = [letter * 2500 for letter in "abcde"]
+
+
+def long_conversation_budget() -> int:
+    system = estimate_tokens([{"role": "system", "content": build_system_prompt()}])
+    return round((system + 3500) / COMPACT_AT)
+
+
+def test_short_conversations_make_no_extra_call():
+    llm = ScriptedLLM("a", "b", "c")
+    agent = Agent(llm, context_tokens=16384)
+
+    for question in ("oi", "tudo bem?", "tchau"):
+        agent.ask("s1", question)
+
+    assert len(llm.calls) == 3
+
+
+def test_summary_replaces_the_oldest_turns_and_is_then_updated():
+    llm = ScriptedLLM("r1", "r2", "r3", "resumo 1", "r4", "resumo 2", "r5")
+    agent = Agent(llm, context_tokens=long_conversation_budget())
+
+    for question in QUESTIONS[:4]:
+        agent.ask("s1", question)
+
+    summary_call = llm.calls[3]
+    assert summary_call[0]["content"] == build_summary_prompt()
+    request = summary_call[1]["content"]
+    assert "Resumo anterior:\n(nenhum)" in request
+    assert f"Cliente: {QUESTIONS[0]}\nTom: r1" in request
+    assert QUESTIONS[1] not in request
+
+    after = llm.calls[4]
+    assert after[0]["content"].endswith(f"{SUMMARY_HEADING}\nresumo 1")
+    assert [m["content"] for m in after[1:]] == [
+        QUESTIONS[1],
+        "r2",
+        QUESTIONS[2],
+        "r3",
+        QUESTIONS[3],
+    ]
+
+    agent.ask("s1", QUESTIONS[4])
+
+    request = llm.calls[5][1]["content"]
+    assert "Resumo anterior:\nresumo 1" in request
+    assert f"Cliente: {QUESTIONS[1]}\nTom: r2" in request
+    assert llm.calls[6][0]["content"].endswith("resumo 2")
+    assert llm.calls[6][1]["content"] == QUESTIONS[2]
+    # Only the model's context shrinks: the history keeps every message.
+    assert len(agent.history("s1")) == 10
+
+
+def test_failed_summary_leaves_the_session_as_it_was():
+    llm = ScriptedLLM("r1", "r2", "r3", LLMUnavailable("down"), "resumo", "r4")
+    agent = Agent(llm, context_tokens=long_conversation_budget())
+    for question in QUESTIONS[:3]:
+        agent.ask("s1", question)
+
+    with pytest.raises(LLMUnavailable):
+        agent.ask("s1", QUESTIONS[3])
+    assert len(agent.history("s1")) == 6
+
+    assert agent.ask("s1", QUESTIONS[3]) == "r4"
+    assert llm.calls[-1][0]["content"].endswith("resumo")
+
+
+def test_summary_input_shows_tool_calls_and_results():
+    llm = ScriptedLLM(call("preco", produto="GD20"), "r1", "r2", "r3", "resumo", "r4")
+    agent = Agent(llm, [preco], context_tokens=long_conversation_budget())
+
+    for question in QUESTIONS[:4]:
+        agent.ask("s1", question)
+
+    request = llm.calls[4][1]["content"]
+    assert 'Tom consultou preco({"produto": "GD20"})' in request
+    assert "Resultado de preco: GD20: R$ 100,00" in request

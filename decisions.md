@@ -287,3 +287,19 @@ A support case can take some days to close, so a session is kept for 30 days aft
 ### Save one checkpoint per turn
 
 The scan reads every checkpoint, and LangGraph saved one per graph step. `durability="exit"` saves only when the turn ends. A failed turn is still saved as it stood, and the next turn overwrites it as before.
+
+### Summarize the oldest turns when the context grows
+
+Ollama drops the start of a prompt that doesn't fit `num_ctx`, silently. Before each turn, the context is estimated, and above 60% of `num_ctx` the oldest turns are folded into a summary written by the model, until the estimate is under 40%. The gap leaves room for the turn's tool results and means a summary is written now and then rather than on every turn. The two most recent turns always stay whole, so the model still sees their tool results. Each new summary merges the previous one with the newly folded turns.
+
+### Estimate tokens from characters
+
+Ollama reports a prompt's real size only after the call. Measured with `gemma4:12b`, the system prompt has about 3.9 characters per token and a JSON tool result about 2.7, so the estimate uses 2.5, which errs on the side of summarizing early. Tool schemas are counted from their docstrings. This needs no tokenizer and works the same with the scripted test model.
+
+### Keep the full history and leave prices out of the summary
+
+Only the model's context shrinks: `messages` keeps every message, and the summary and a cursor sit next to it in the state, so `GET /sessions/{id}/messages` is unchanged. The summary keeps the customer's request, products, order and protocol numbers and anything pending. It leaves out prices, stock and order status, which can change, and the prompt tells the model to look them up again. Masks pass through as they are, so a contact in the summary still works in a tool. In a real six-turn run with a reduced budget, the summary was written twice, and the model still answered which order and which guitar the customer had asked about.
+
+### Fail the turn if the summary fails
+
+The summary is written by the same model, so if it is unavailable the turn would fail anyway. The summary step runs before the model call, and its result reaches the state only if it succeeds, so a failure leaves the session as it was.

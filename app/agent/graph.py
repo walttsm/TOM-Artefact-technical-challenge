@@ -1,10 +1,11 @@
 """LangGraph agent: an agent <-> tools loop, with one conversation per thread_id."""
 
+import json
 import logging
 from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
-from inspect import signature
+from inspect import getdoc, signature
 from operator import add
 from typing import Annotated, Any, Literal, NotRequired, TypedDict
 
@@ -17,7 +18,7 @@ from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Overwrite
 
-from app.agent.prompt import build_system_prompt
+from app.agent.prompt import build_summary_prompt, build_system_prompt
 from app.agent.tools import StoreTools
 from app.config import Settings
 from app.policy.privacy import is_masked, pseudonymize, reveal
@@ -30,6 +31,19 @@ EXPIRY_SCAN_INTERVAL = timedelta(hours=1)
 CONTACT_EXPIRED = (
     "os dados de contato mascarados não estão mais disponíveis. "
     "Peça ao cliente para informá-los de novo."
+)
+# Tokens are estimated from characters. Measured with gemma4:12b, the prompt has about
+# 3.9 characters per token and a JSON tool result about 2.7, so 2.5 errs on the safe side.
+CHARS_PER_TOKEN = 2.5
+# Before a turn, a context estimated above COMPACT_AT of num_ctx is cut to COMPACT_TO by
+# folding its oldest turns into a summary. The gap leaves room for the turn's tool results
+# and means a summary is written now and then, not on every turn.
+COMPACT_AT = 0.6
+COMPACT_TO = 0.4
+KEEP_RECENT_TURNS = 2
+SUMMARY_HEADING = (
+    "# Resumo do início desta conversa\n"
+    "Preços, estoque e pedidos citados antes podem ter mudado: consulte de novo."
 )
 ROUND_LIMIT_REPLY = (
     "Desculpa, não consegui concluir essa consulta por aqui. "
@@ -71,6 +85,32 @@ class AgentState(TypedDict):
     # The turn in progress. It reaches `messages` only when the turn ends, and a
     # new turn overwrites what a failed one left here.
     turn: Annotated[list[Message], add]
+    # The model sees a summary of the first `summarized` messages, then the rest of them.
+    summary: NotRequired[str]
+    summarized: NotRequired[int]
+
+
+def estimate_tokens(messages: Sequence[Message], tools: Sequence[Tool] = ()) -> int:
+    chars = sum(len(message["content"]) for message in messages)
+    chars += sum(len(json.dumps(message.get("tool_calls", ""))) for message in messages)
+    chars += sum(len(tool.__name__) + len(getdoc(tool) or "") for tool in tools)
+    return round(chars / CHARS_PER_TOKEN)
+
+
+def _transcript(messages: Sequence[Message]) -> str:
+    lines = []
+    for message in messages:
+        if message["role"] == "user":
+            lines.append(f"Cliente: {message['content']}")
+        elif message["role"] == "tool":
+            lines.append(f"Resultado de {message['tool_name']}: {message['content']}")
+        else:
+            for call in message.get("tool_calls", []):
+                arguments = json.dumps(call["function"]["arguments"], ensure_ascii=False)
+                lines.append(f"Tom consultou {call['function']['name']}({arguments})")
+            if message["content"]:
+                lines.append(f"Tom: {message['content']}")
+    return "\n".join(lines)
 
 
 def ollama_llm(settings: Settings) -> LLM:
@@ -133,6 +173,7 @@ class Agent:
         llm: LLM,
         tools: Sequence[Tool] = (),
         checkpointer: BaseCheckpointSaver | None = None,
+        context_tokens: int | None = None,
         session_ttl: timedelta | None = None,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
     ) -> None:
@@ -144,9 +185,47 @@ class Agent:
         # Real contact values per session, in memory only: checkpoints keep the masks.
         self._vaults: dict[str, dict[str, str]] = {}
 
+        def context(state: AgentState) -> list[Message]:
+            prompt = build_system_prompt()
+            if summary := state.get("summary"):
+                prompt = f"{prompt}\n\n{SUMMARY_HEADING}\n{summary}"
+            system: Message = {"role": "system", "content": prompt}
+            return [system, *state["messages"][state.get("summarized", 0) :], *state["turn"]]
+
+        def context_size(state: AgentState, summarized: int | None = None) -> int:
+            if summarized is not None:
+                state = {**state, "summarized": summarized}
+            return estimate_tokens(context(state), tools)
+
+        def compact(state: AgentState) -> dict[str, Any]:
+            """Fold the oldest turns into the summary when the context grows too large."""
+            if not context_tokens or context_size(state) <= context_tokens * COMPACT_AT:
+                return {}
+            messages, start = state["messages"], state.get("summarized", 0)
+            turn_starts = [i for i, m in enumerate(messages) if i > start and m["role"] == "user"]
+            # Folding stops before the recent turns, so the model still sees their tool results.
+            ends = turn_starts[: len(turn_starts) + 1 - KEEP_RECENT_TURNS]
+            if not ends:
+                return {}
+            target = context_tokens * COMPACT_TO
+            end = next((i for i in ends if context_size(state, i) <= target), ends[-1])
+            previous = state.get("summary") or "(nenhum)"
+            request = (
+                f"Resumo anterior:\n{previous}\n\n"
+                f"Novas mensagens:\n{_transcript(messages[start:end])}"
+            )
+            summary = llm(
+                [
+                    {"role": "system", "content": build_summary_prompt()},
+                    {"role": "user", "content": request},
+                ],
+                (),
+            )
+            logger.info("Folded %s messages into the summary", end - start)
+            return {"summary": summary["content"], "summarized": end}
+
         def call_model(state: AgentState) -> dict[str, list[Message]]:
-            system: Message = {"role": "system", "content": build_system_prompt()}
-            return {"turn": [llm([system, *state["messages"], *state["turn"]], tools)]}
+            return {"turn": [llm(context(state), tools)]}
 
         def call_tools(state: AgentState, config: RunnableConfig) -> dict[str, list[Message]]:
             vault = self._vaults.get(config["configurable"]["thread_id"], {})
@@ -168,11 +247,13 @@ class Agent:
             return "give_up" if rounds >= MAX_TOOL_ROUNDS else "agent"
 
         builder = StateGraph(AgentState)
+        builder.add_node("compact", compact)
         builder.add_node("agent", call_model)
         builder.add_node("tools", call_tools)
         builder.add_node("give_up", give_up)
         builder.add_node("finish_turn", finish_turn)
-        builder.add_edge(START, "agent")
+        builder.add_edge(START, "compact")
+        builder.add_edge("compact", "agent")
         builder.add_conditional_edges("agent", after_model)
         builder.add_conditional_edges("tools", after_tools)
         builder.add_edge("give_up", "finish_turn")
@@ -230,6 +311,7 @@ def store_agent(settings: Settings) -> Iterator[Agent]:
             ollama_llm(settings),
             StoreTools(settings.db_path).all(),
             checkpointer,
+            context_tokens=settings.ollama_num_ctx,
             session_ttl=timedelta(days=settings.session_ttl_days),
         )
 

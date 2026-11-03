@@ -65,6 +65,7 @@ app/
     privacy.py            # masks for personal data
   agent/
     prompts/system_prompt.md
+    prompts/summary_prompt.md
     prompt.py
     tools.py
     graph.py
@@ -323,14 +324,14 @@ The tools need the customer's real email and phone, but the model and the histor
 4. The summary carries the customer's request, products, order and protocol numbers and anything pending. It leaves out prices, which the model must look up again.
 
 **Done when:**
-- [ ] Graph tests with a scripted fake show a summary replacing old turns once the limit is passed, and then being updated.
-- [ ] A failed summary call leaves the session as it was.
-- [ ] Short conversations make no extra model call.
+- [x] Graph tests with a scripted fake show a summary replacing old turns once the limit is passed, and then being updated.
+- [x] A failed summary call leaves the session as it was.
+- [x] Short conversations make no extra model call.
 
 ## Known limitations to plan for
 
 - Production would need API authentication and rate limiting: anyone with a `session_id` can read that conversation.
-- History stores personal data in plain text and has no size limit or expiry.
+- History stores personal data in plain text and has no size limit or expiry. Addressed in Phase 6.
 - Handoffs are saved but notify no one.
 - If the LLM fails after `registrar_encaminhamento` ran, the handoff stays saved while the turn is lost, so a retry can register it twice.
 - The agent has no holiday calendar and no shipping calculation by postal code.
