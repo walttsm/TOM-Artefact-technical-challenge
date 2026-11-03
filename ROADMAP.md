@@ -328,6 +328,43 @@ The tools need the customer's real email and phone, but the model and the histor
 - [x] A failed summary call leaves the session as it was.
 - [x] Short conversations make no extra model call.
 
+## Phase 7: Remote models through the OpenAI API
+
+An example of integration with an external API: the agent can run on a local Ollama model or on any server that speaks the OpenAI Chat Completions API, chosen by configuration. The official `openai` SDK does the HTTP work. With `OPENAI_BASE_URL`, the same adapter reaches OpenAI itself or a compatible server, including Ollama's own `/v1` endpoint, which lets it be tested without an API key.
+
+The graph already takes the model as a function from messages and tools to a reply, so only a new adapter and its configuration are needed. Each numbered step is one commit.
+
+### 7.1 Move the model adapters out of the graph
+
+1. `agent/llm.py`: the message types, `LLMUnavailable` and `ollama_llm`, moved from `graph.py` with no change in behavior.
+2. Update the imports in the API, the example script and the tests.
+
+**Done when:**
+- [ ] `graph.py` no longer imports `ollama`.
+- [ ] All tests pass unchanged apart from their imports.
+
+### 7.2 OpenAI-compatible adapter
+
+1. `openai_llm(settings)` in `agent/llm.py`, with the client injectable for tests.
+2. Convert the stored messages to the OpenAI format: tool calls get IDs and JSON arguments, and each tool result is linked to its call by position. Stored history keeps its current format, so a session can switch provider.
+3. Send the tools as JSON schemas, built from the same signatures and docstrings Ollama reads.
+4. Map the SDK's errors and empty replies to `LLMUnavailable`, so the API still returns 502.
+
+**Done when:**
+- [ ] Tests with a fake client cover a plain answer, a tool call with its result sent back, arguments the model sends as invalid JSON, and an error from the SDK.
+- [ ] A real conversation runs through Ollama's `/v1` endpoint with this adapter and uses `buscar_produtos`.
+
+### 7.3 Choose the provider by configuration
+
+1. `LLM_PROVIDER`: `ollama` (default) or `openai`.
+2. `OPENAI_API_KEY`, `OPENAI_MODEL` (required with `openai`, since model names change), `OPENAI_BASE_URL` (optional), `OPENAI_TIMEOUT` and `OPENAI_CONTEXT_TOKENS`, the budget the summary step uses.
+3. `build_llm(settings)` picks the adapter. `store_agent` and the example script use it.
+4. README: configuration table, how to run against OpenAI or a compatible server, and what is sent to a remote provider. Contacts are already masked, but names and the conversation itself leave the machine.
+
+**Done when:**
+- [ ] An unknown provider or a missing model fails at startup with a clear message.
+- [ ] With no new variables set, the service runs on Ollama exactly as before.
+
 ## Known limitations to plan for
 
 - Production would need API authentication and rate limiting: anyone with a `session_id` can read that conversation.
