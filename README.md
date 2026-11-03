@@ -149,6 +149,10 @@ The script works on a temporary copy of the database, so it leaves no handoffs b
 
 These follow the decisions the brief lists. [decisions.md](decisions.md) records each one in detail, and [investigations.md](investigations.md) records the model behavior that led to several of them.
 
+### Development approach: start simple, then build step by step
+
+Phase 1 built the simplest assistant possible: an API endpoint and a one-node graph calling the local model, with a placeholder prompt and no tools. It was the starting point for the whole project. Each following phase added one piece on top of a working base: the store's prompt, the data and policy tools, the tool loop and persistent history, tests with the real model, personal data handling and remote models. Every step ended with its checks, so a failure pointed to the piece just added. [ROADMAP.md](ROADMAP.md) lists the steps.
+
 ### Architecture
 
 ```

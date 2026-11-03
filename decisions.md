@@ -1,5 +1,24 @@
 # Decisions
 
+## Phase 1: Create the assistant
+
+### Start with the simplest assistant possible
+
+The project starts from the simplest assistant that works end to end: a FastAPI endpoint, a LangGraph graph with a single node that calls the local model, a placeholder prompt and history kept in memory. It has no store data, no policies and no tools yet.
+
+This is the starting point for the whole project. It proves that the API, the graph and the model work together before anything else depends on them. Each following phase then adds one piece on top of a working base:
+
+| Phase | What it adds |
+|---|---|
+| 2 | The store's prompt: persona, service flow and rules |
+| 3 | The data and policy layers, and the tools that combine them |
+| 4 | The tool loop, and history that survives a restart |
+| 5 | Tests with the real model, fixes, and the example conversations |
+| 6 | Personal data masking, session expiry and long conversations |
+| 7 | Remote models through the OpenAI API |
+
+Every step ends with its checks, so when something breaks, the cause is in the piece just added.
+
 ## Phase 2: Extract the prompt
 
 ### Keep the full policy text in the prompt until Phase 4
