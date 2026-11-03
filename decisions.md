@@ -257,3 +257,25 @@ The model said "pode devolver sim" before knowing how the customer bought. The a
 The brief doesn't ask for it, and Ollama and its model would still be installed on the host. The README lists it under what could be done with more time.
 
 Should we use an external model API such as OpenAI, anthropic or Google, the dockerization would be easier and viable for a MVP.
+
+## Phase 6: Personal data and context size
+
+### Mask contacts before they reach the graph
+
+Masking the history when a turn ends wasn't enough: LangGraph saves a checkpoint at each step, and a failed turn is saved as it stood, raw contacts included. So each customer message is masked before it enters the graph, and the real values stay in memory, per session, until a tool runs. The model, the checkpoints and `GET /sessions/{id}/messages` only ever hold masks. Tool results are masked with the same values, in case a tool repeats one.
+
+### Readable masks, not tokens
+
+A mask such as `a***@coldmail.com` or `(67) *****-3456` still tells the model and the customer which contact is meant, and the model can pass it to a tool as it is. `gemma4:12b` did that in its first run, and `consultar_pedido` found order 8 with the restored email. If two contacts would share a mask, the second one shows one more character.
+
+### Remove CPF and card numbers for good
+
+No tool needs them, so they become `[CPF omitido]` and `[cartão omitido]` and are never kept. They are only removed when their check digits are valid, so order numbers, codes and other long numbers stay. Without an area code, a phone is only recognized in its written form, such as `99812-3456`, so an 8-digit postal code isn't taken for one.
+
+### Ask again when the real value is gone
+
+Masks in memory don't survive a restart. A tool call that still carries a mask is refused with a message asking the model to request the contact again, so a handoff never saves a masked contact the team can't use.
+
+### Keep the handoff's contact
+
+The team needs the real phone or email to call the customer back, so `registrar_encaminhamento` saves the restored value. Customer names typed into a message are not detected: a name has no pattern to match.

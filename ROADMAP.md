@@ -62,6 +62,7 @@ app/
     pricing.py            # promotions, PIX, installments
     availability.py       # what can be sold
     identity.py           # order access rules
+    privacy.py            # masks for personal data
   agent/
     prompts/system_prompt.md
     prompt.py
@@ -299,11 +300,11 @@ The tools need the customer's real email and phone, but the model and the histor
 3. Tell the model in the prompt how masked data looks and that it should pass masks to tools as they are.
 
 **Done when:**
-- [ ] No checkpoint contains a customer's email, phone, CPF or card number, even after a failed turn.
-- [ ] `consultar_pedido` with a masked email still finds order 8.
-- [ ] `GET /sessions/{id}/messages` shows masks only.
-- [ ] `(67) 3341-4444`, tracking codes, prices and order numbers stay unmasked.
-- [ ] A real conversation looks up order 8 and registers a complaint using masked contacts.
+- [x] No checkpoint contains a customer's email, phone, CPF or card number, even after a failed turn.
+- [x] `consultar_pedido` with a masked email still finds order 8.
+- [x] `GET /sessions/{id}/messages` shows masks only.
+- [x] `(67) 3341-4444`, tracking codes, prices and order numbers stay unmasked.
+- [x] A real conversation looks up order 8 and registers a complaint using masked contacts.
 
 ### 6.2 Session expiry
 

@@ -112,6 +112,10 @@ The prompt holds what applies to every message: persona, service flow, store det
 
 Support conversations continue over time, so sessions survive a server restart through LangGraph's `SqliteSaver`. Checkpoints sit in a separate file from the store's data.
 
+### Masked personal data
+
+Emails and phones are replaced by readable masks, such as `a***@coldmail.com`, before a message reaches the graph. The real values stay in memory and are put back only when a tool runs, so the model, the checkpoints and the history never hold them. CPF and card numbers are removed, since no tool needs them.
+
 ## Assumptions
 
 The brief asks for reasonable interpretations where the material is ambiguous.
@@ -152,7 +156,7 @@ The source values are kept, because nothing shows which conflicting value is rig
 - **Model reliability:** answers vary between runs, and each scenario was run only a few times. `investigations.md` lists what was seen.
 - **Follow-up questions:** the model can reuse earlier tool results, so prices in a long conversation can be out of date.
 - **Security:** the API has no authentication or rate limiting, so anyone with a `session_id` can read that conversation. Identity checks are basic and suit a prototype only.
-- **Personal data:** history is stored in plain text, with no expiry.
+- **Personal data:** emails and phones are masked before they reach the model or the history, and CPF and card numbers are removed. Names are not detected, and after a restart the customer has to give their contact again.
 - **Context size:** history has no size limit, so a very long session can exceed `num_ctx`.
 - **Handoffs:** they are saved but notify no one. If the model fails right after registering one, a retry can register it twice.
 - **Search:** it is keyword-based, doesn't handle typos, and matches words in descriptions, so a search can include a related product. A term combining a campaign and a product returns nothing.

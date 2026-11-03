@@ -43,3 +43,14 @@ def test_llm_failure_returns_502():
 def test_invalid_message_length_returns_422(message):
     response = client_with(lambda m: "x").post("/chat", json={"message": message})
     assert response.status_code == 422
+
+
+def test_history_shows_masks_only():
+    client = client_with(lambda messages: "ok")
+
+    session_id = client.post(
+        "/chat", json={"message": "Meu e-mail é ana@jmail.com e o fone (67) 99812-3456"}
+    ).json()["session_id"]
+
+    history = client.get(f"/sessions/{session_id}/messages").json()["messages"]
+    assert history[0]["content"] == "Meu e-mail é a***@jmail.com e o fone (67) *****-3456"

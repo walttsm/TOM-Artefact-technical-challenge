@@ -9,6 +9,7 @@ from typing import Annotated, Any, Literal, NotRequired, TypedDict
 
 import httpx
 import ollama
+from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.checkpoint.sqlite import SqliteSaver
@@ -18,10 +19,15 @@ from langgraph.types import Overwrite
 from app.agent.prompt import build_system_prompt
 from app.agent.tools import StoreTools
 from app.config import Settings
+from app.policy.privacy import is_masked, pseudonymize, reveal
 
 logger = logging.getLogger(__name__)
 
 MAX_TOOL_ROUNDS = 5
+CONTACT_EXPIRED = (
+    "os dados de contato mascarados não estão mais disponíveis. "
+    "Peça ao cliente para informá-los de novo."
+)
 ROUND_LIMIT_REPLY = (
     "Desculpa, não consegui concluir essa consulta por aqui. "
     "Você pode tentar de novo com mais detalhes ou falar com a equipe "
@@ -92,12 +98,17 @@ def ollama_llm(settings: Settings) -> LLM:
     return call
 
 
-def _run_tool(tools: dict[str, Tool], call: ToolCall) -> Message:
+def _run_tool(tools: dict[str, Tool], call: ToolCall, vault: dict[str, str]) -> Message:
     name = call["function"]["name"]
     try:
         if name not in tools:
             raise ValueError(f"essa ferramenta não existe. Use uma destas: {', '.join(tools)}.")
-        arguments = call["function"]["arguments"]
+        # The model only sees masks. The real values reach the tool and nothing else.
+        arguments = {
+            key: reveal(value, vault) for key, value in call["function"]["arguments"].items()
+        }
+        if any(is_masked(value) for value in arguments.values()):
+            raise ValueError(CONTACT_EXPIRED)
         accepted = signature(tools[name]).parameters
         if unknown := [argument for argument in arguments if argument not in accepted]:
             raise ValueError(
@@ -109,7 +120,8 @@ def _run_tool(tools: dict[str, Tool], call: ToolCall) -> Message:
         # The model reads the error and can fix its arguments or explain the problem.
         logger.warning("Tool %s failed: %s", name, exc)
         content = f"Erro ao executar {name}: {exc}"
-    return {"role": "tool", "tool_name": name, "content": content}
+    # In case a result repeats a contact, it goes back to the model masked too.
+    return {"role": "tool", "tool_name": name, "content": pseudonymize(content, vault)}
 
 
 class Agent:
@@ -120,14 +132,17 @@ class Agent:
         checkpointer: BaseCheckpointSaver | None = None,
     ) -> None:
         tools_by_name = {tool.__name__: tool for tool in tools}
+        # Real contact values per session, in memory only: checkpoints keep the masks.
+        self._vaults: dict[str, dict[str, str]] = {}
 
         def call_model(state: AgentState) -> dict[str, list[Message]]:
             system: Message = {"role": "system", "content": build_system_prompt()}
             return {"turn": [llm([system, *state["messages"], *state["turn"]], tools)]}
 
-        def call_tools(state: AgentState) -> dict[str, list[Message]]:
+        def call_tools(state: AgentState, config: RunnableConfig) -> dict[str, list[Message]]:
+            vault = self._vaults.get(config["configurable"]["thread_id"], {})
             calls = state["turn"][-1]["tool_calls"]
-            return {"turn": [_run_tool(tools_by_name, call) for call in calls]}
+            return {"turn": [_run_tool(tools_by_name, call, vault) for call in calls]}
 
         def give_up(state: AgentState) -> dict[str, list[Message]]:
             logger.warning("Tool round limit reached (%s)", MAX_TOOL_ROUNDS)
@@ -156,7 +171,8 @@ class Agent:
         self._graph = builder.compile(checkpointer=checkpointer or InMemorySaver())
 
     def ask(self, session_id: str, question: str) -> str:
-        turn_start = Overwrite([{"role": "user", "content": question}])
+        masked = pseudonymize(question, self._vaults.setdefault(session_id, {}))
+        turn_start = Overwrite([{"role": "user", "content": masked}])
         state = self._graph.invoke({"messages": [], "turn": turn_start}, _thread(session_id))
         return state["messages"][-1]["content"]
 

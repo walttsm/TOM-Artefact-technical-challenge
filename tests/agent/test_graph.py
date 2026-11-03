@@ -355,3 +355,60 @@ def test_tool_schemas_are_valid_for_the_model():
     assert not schemas["buscar_produtos"].required
     assert schemas["calcular_parcelamento"].required == ["valor"]
     assert set(schemas["registrar_encaminhamento"].required) == {"tipo", "resumo", "contato"}
+
+
+received: list[str] = []
+
+
+def contato(email: str = "", telefone: str = "") -> str:
+    received.append(f"{email} {telefone}".strip())
+    return f"recebido {email} {telefone}".strip()
+
+
+def test_model_sees_masks_and_tools_get_the_real_contacts(tmp_path):
+    received.clear()
+    path = str(tmp_path / "checkpoints.db")
+    with SqliteSaver.from_conn_string(path) as saver:
+        llm = ScriptedLLM(
+            call("contato", email="a***@coldmail.com", telefone="(67) *****-3456"),
+            "Pronto.",
+            call("contato", email="a***@coldmail.com"),
+            LLMUnavailable("down"),
+        )
+        agent = Agent(llm, [contato], saver)
+        agent.ask(
+            "s1", "Sou anacarol.ferreira@coldmail.com, fone (67) 99812-3456, CPF 529.982.247-25"
+        )
+        with pytest.raises(LLMUnavailable):
+            agent.ask("s1", "De novo: anacarol.ferreira@coldmail.com")
+
+        assert llm.calls[0][-1]["content"] == (
+            "Sou a***@coldmail.com, fone (67) *****-3456, CPF [CPF omitido]"
+        )
+        assert received[0] == "anacarol.ferreira@coldmail.com 67998123456"
+        assert llm.calls[1][-1]["content"] == "recebido a***@coldmail.com (67) *****-3456"
+        assert agent.history("s1")[0]["content"].startswith("Sou a***@coldmail.com")
+
+    stored = Path(path).read_bytes()
+    for real in (b"anacarol", b"99812", b"98123456", b"529.982"):
+        assert real not in stored
+
+
+def test_masks_without_real_values_ask_the_model_to_request_them_again():
+    llm = ScriptedLLM(call("contato", email="a***@coldmail.com"), "Pode me passar de novo?")
+    agent = Agent(llm, [contato])
+
+    agent.ask("s1", "Meu e-mail é o mesmo de antes")
+
+    result = llm.calls[1][-1]["content"]
+    assert result.startswith("Erro ao executar contato")
+    assert "informá-los de novo" in result
+
+
+def test_masked_email_finds_the_customers_order(real_db):
+    llm = ScriptedLLM(call("consultar_pedido", numero_pedido=8, email="a***@coldmail.com"), "ok")
+    agent = Agent(llm, StoreTools(real_db).all())
+
+    agent.ask("s1", "Status do pedido 8? Meu e-mail é anacarol.ferreira@coldmail.com")
+
+    assert '"numero": 8' in llm.calls[1][-1]["content"]
