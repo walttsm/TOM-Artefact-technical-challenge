@@ -1,6 +1,6 @@
 """Run sample conversations through the real agent and save unedited transcripts.
 
-Needs Ollama and the ingested database. Run with: python -m scripts.generate_examples
+Needs the configured model, Ollama by default, and the ingested database. Run with: python -m scripts.generate_examples
 
 Each run uses a temporary copy of the database and new checkpoints, so it leaves no
 handoffs or sessions behind.
@@ -12,7 +12,7 @@ import tempfile
 from pathlib import Path
 
 from app.agent.graph import Agent
-from app.agent.llm import LLM, ollama_llm
+from app.agent.llm import LLM, build_llm
 from app.agent.tools import StoreTools
 from app.config import PROJECT_ROOT, get_settings
 
@@ -85,7 +85,7 @@ def main() -> None:
         db_copy = Path(work) / "emporio.db"
         shutil.copy(settings.db_path, db_copy)
         tools_used: list[str] = []
-        llm = recording(ollama_llm(settings), tools_used)
+        llm = recording(build_llm(settings), tools_used)
         agent = Agent(llm, StoreTools(db_copy).all())
         for name, messages in SCENARIOS.items():
             path = OUTPUT_DIR / f"{name}.md"

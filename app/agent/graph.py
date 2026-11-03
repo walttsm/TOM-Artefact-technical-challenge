@@ -16,7 +16,7 @@ from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Overwrite
 
-from app.agent.llm import LLM, Message, Tool, ToolCall, ollama_llm
+from app.agent.llm import LLM, Message, Tool, ToolCall, build_llm
 from app.agent.prompt import build_summary_prompt, build_system_prompt
 from app.agent.tools import StoreTools
 from app.config import Settings
@@ -248,14 +248,14 @@ class Agent:
 
 @contextmanager
 def store_agent(settings: Settings) -> Iterator[Agent]:
-    """The real agent: Ollama, the store's tools and history that survives restarts."""
+    """The real agent: the configured model, the store's tools and lasting history."""
     settings.checkpoints_path.parent.mkdir(parents=True, exist_ok=True)
     with SqliteSaver.from_conn_string(str(settings.checkpoints_path)) as checkpointer:
         yield Agent(
-            ollama_llm(settings),
+            build_llm(settings),
             StoreTools(settings.db_path).all(),
             checkpointer,
-            context_tokens=settings.ollama_num_ctx,
+            context_tokens=settings.context_tokens,
             session_ttl=timedelta(days=settings.session_ttl_days),
         )
 

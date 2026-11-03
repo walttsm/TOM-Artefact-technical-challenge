@@ -154,3 +154,14 @@ def _parse_arguments(call: Any) -> dict[str, Any]:
         arguments = None
     # Passed on under a name no tool accepts, so the model is told to call again.
     return arguments if isinstance(arguments, dict) else {"json_invalido": call.function.arguments}
+
+
+def build_llm(settings: Settings) -> LLM:
+    """The adapter for the configured provider. A wrong setting stops the server at startup."""
+    if settings.llm_provider == "ollama":
+        return ollama_llm(settings)
+    if settings.llm_provider == "openai":
+        if not settings.openai_model:
+            raise ValueError("Set OPENAI_MODEL to use LLM_PROVIDER=openai.")
+        return openai_llm(settings)
+    raise ValueError(f"Unknown LLM_PROVIDER {settings.llm_provider!r}: use ollama or openai.")

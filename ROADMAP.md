@@ -363,8 +363,8 @@ The graph already takes the model as a function from messages and tools to a rep
 4. README: configuration table, how to run against OpenAI or a compatible server, and what is sent to a remote provider. Contacts are already masked, but names and the conversation itself leave the machine.
 
 **Done when:**
-- [ ] An unknown provider or a missing model fails at startup with a clear message.
-- [ ] With no new variables set, the service runs on Ollama exactly as before.
+- [x] An unknown provider or a missing model fails at startup with a clear message.
+- [x] With no new variables set, the service runs on Ollama exactly as before.
 
 ## Known limitations to plan for
 

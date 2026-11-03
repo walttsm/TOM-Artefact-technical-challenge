@@ -325,3 +325,7 @@ Checkpoints keep messages in the format the graph already uses, and the OpenAI a
 ### Send invalid tool arguments back to the model
 
 A remote model sends arguments as a JSON string, which can be invalid. Rather than fail the turn, the adapter passes the text on under `json_invalido`, an argument no tool accepts, so the existing error tells the model which arguments to use and asks for a new call.
+
+### Choose the provider at startup, with Ollama as the default
+
+`LLM_PROVIDER` picks the adapter once, when the server starts, and a wrong value or a missing `OPENAI_MODEL` stops it there with a message naming the variable, rather than failing on the first customer message. `OPENAI_MODEL` has no default because model names and access change between accounts, and a guessed default would fail in a less clear way. Remote models have larger contexts than the local one, so the summary budget is its own setting, `OPENAI_CONTEXT_TOKENS`, which also caps what each call costs. With no new variables, nothing changes: the service runs on Ollama as before.

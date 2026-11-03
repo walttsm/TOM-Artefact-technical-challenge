@@ -59,6 +59,39 @@ Set these as environment variables or in a `.env` file.
 | `DB_PATH` | `storage/emporio.db` in the project root |
 | `CHECKPOINTS_PATH` | `storage/checkpoints.db` in the project root |
 | `SESSION_TTL_DAYS` | `30` |
+| `LLM_PROVIDER` | `ollama`, or `openai` for a remote model |
+
+### Remote models through the OpenAI API
+
+With `LLM_PROVIDER=openai`, the agent uses the OpenAI Chat Completions API, through the official SDK. `OPENAI_BASE_URL` points it at any compatible server instead of OpenAI itself.
+
+| Variable | Default |
+|---|---|
+| `OPENAI_MODEL` | None: required, since model names change |
+| `OPENAI_API_KEY` | None: required by OpenAI. Any text works for a local server |
+| `OPENAI_BASE_URL` | OpenAI's API |
+| `OPENAI_TIMEOUT` (seconds) | `60` |
+| `OPENAI_CONTEXT_TOKENS` | `16384`: the budget long conversations are summarized to fit |
+
+For example, in `.env`:
+
+```
+LLM_PROVIDER=openai
+OPENAI_MODEL=<a model your account can use>
+OPENAI_API_KEY=<your key>
+```
+
+To try the adapter without a key, point it at Ollama's own compatible endpoint:
+
+```
+LLM_PROVIDER=openai
+OPENAI_MODEL=gemma4:12b
+OPENAI_API_KEY=ollama
+OPENAI_BASE_URL=http://localhost:11434/v1
+OPENAI_TIMEOUT=300
+```
+
+With a remote provider, the conversation leaves the machine. Emails and phones are still masked and CPF and card numbers removed, but names and everything else the customer writes are sent to the provider.
 
 ## Test
 
@@ -104,6 +137,8 @@ The agent is a small explicit graph: `compact -> agent <-> tools`, with a round 
 ### Ollama and `gemma4:12b`
 
 A local model has no API cost or key, so anyone can run the project, and customer data stays on the machine. The trade-off is slower and less reliable answers, which is why guarantees live in code wherever possible. `gemma4:12b` handled the test scenarios at about 3 to 20 seconds per message on the development machine. A systematic comparison with other models is still to be done.
+
+The model is behind a small adapter, a function from messages and tools to a reply, so a remote model can be used instead. `LLM_PROVIDER=openai` selects an adapter for the OpenAI Chat Completions API, which most providers and local servers accept. It is there as an example of an external API integration. The scenarios were run on it only through Ollama's compatible endpoint.
 
 ### Prompt strategy
 
@@ -171,7 +206,7 @@ The source values are kept, because nothing shows which conflicting value is rig
 ## With more time
 
 - Compare models systematically, with an automated evaluation of the scenarios over repeated runs.
-- Try external LLM APIs, which could improve answer quality and speed at the cost of API fees and of sending customer data to a third party.
+- Run the scenarios on remote models through the OpenAI adapter, which could improve answer quality and speed at the cost of API fees and of sending conversations to a third party.
 - Add authentication and rate limiting.
 - Make handoffs idempotent and notify the team.
 - Add fuzzy product search and a shipping quote.

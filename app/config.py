@@ -22,12 +22,20 @@ class Settings:
     checkpoints_path: Path = PROJECT_ROOT / "storage" / "checkpoints.db"
     # A session idle for longer than this is deleted, with everything it holds.
     session_ttl_days: float = 30
-    # Used when the provider is "openai": OpenAI itself, or a compatible server.
+    # "ollama" runs the local model. "openai" uses OpenAI or a compatible server.
+    llm_provider: str = "ollama"
     openai_model: str = ""
     openai_api_key: str | None = None
     openai_base_url: str | None = None
     openai_timeout: float = 60
     openai_context_tokens: int = 16384
+
+    @property
+    def context_tokens(self) -> int:
+        """The context budget that long conversations are summarized to fit."""
+        if self.llm_provider == "openai":
+            return self.openai_context_tokens
+        return self.ollama_num_ctx
 
 
 def get_settings() -> Settings:
@@ -42,4 +50,10 @@ def get_settings() -> Settings:
             os.getenv("CHECKPOINTS_PATH", PROJECT_ROOT / "storage" / "checkpoints.db")
         ),
         session_ttl_days=float(os.getenv("SESSION_TTL_DAYS", "30")),
+        llm_provider=os.getenv("LLM_PROVIDER", "ollama").strip().lower(),
+        openai_model=os.getenv("OPENAI_MODEL", ""),
+        openai_api_key=os.getenv("OPENAI_API_KEY") or None,
+        openai_base_url=os.getenv("OPENAI_BASE_URL") or None,
+        openai_timeout=float(os.getenv("OPENAI_TIMEOUT", "60")),
+        openai_context_tokens=int(os.getenv("OPENAI_CONTEXT_TOKENS", "16384")),
     )

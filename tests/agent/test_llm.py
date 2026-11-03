@@ -1,4 +1,5 @@
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import httpx
@@ -8,9 +9,9 @@ import pytest
 from ollama._utils import convert_function_to_tool
 from openai.types.chat import ChatCompletion
 
-from app.agent.llm import LLMUnavailable, ollama_llm, openai_llm
+from app.agent.llm import LLMUnavailable, build_llm, ollama_llm, openai_llm
 from app.agent.tools import StoreTools
-from app.config import Settings
+from app.config import Settings, get_settings
 
 SETTINGS = Settings("http://127.0.0.1:9", "any-model", 16384, 1.0, openai_model="remote-model")
 
@@ -225,3 +226,39 @@ def test_tool_schemas_are_valid_for_the_model():
     assert not schemas["buscar_produtos"].required
     assert schemas["calcular_parcelamento"].required == ["valor"]
     assert set(schemas["registrar_encaminhamento"].required) == {"tipo", "resumo", "contato"}
+
+
+def test_ollama_is_the_default_provider(monkeypatch):
+    for name in ("LLM_PROVIDER", "OPENAI_MODEL", "OPENAI_CONTEXT_TOKENS", "OLLAMA_NUM_CTX"):
+        monkeypatch.delenv(name, raising=False)
+    settings = get_settings()
+
+    assert settings.llm_provider == "ollama"
+    assert settings.context_tokens == settings.ollama_num_ctx == 16384
+    assert build_llm(settings).__qualname__.startswith("ollama_llm")
+
+
+def test_openai_provider_uses_its_own_settings(monkeypatch):
+    monkeypatch.setenv("LLM_PROVIDER", "OpenAI")
+    monkeypatch.setenv("OPENAI_MODEL", "remote-model")
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    monkeypatch.setenv("OPENAI_BASE_URL", "http://localhost:11434/v1")
+    monkeypatch.setenv("OPENAI_CONTEXT_TOKENS", "64000")
+    settings = get_settings()
+
+    assert settings.llm_provider == "openai"
+    assert settings.openai_base_url == "http://localhost:11434/v1"
+    assert settings.context_tokens == 64000
+    assert build_llm(settings).__qualname__.startswith("openai_llm")
+
+
+@pytest.mark.parametrize(
+    ("changes", "message"),
+    [
+        ({"llm_provider": "gemini"}, "Unknown LLM_PROVIDER 'gemini'"),
+        ({"llm_provider": "openai", "openai_model": ""}, "Set OPENAI_MODEL"),
+    ],
+)
+def test_wrong_provider_settings_fail_with_a_clear_message(changes, message):
+    with pytest.raises(ValueError, match=message):
+        build_llm(replace(SETTINGS, **changes))
