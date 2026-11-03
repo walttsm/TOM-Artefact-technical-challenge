@@ -58,6 +58,7 @@ Set these as environment variables or in a `.env` file.
 | `DATA_DIR` | `data` in the project root |
 | `DB_PATH` | `storage/emporio.db` in the project root |
 | `CHECKPOINTS_PATH` | `storage/checkpoints.db` in the project root |
+| `SESSION_TTL_DAYS` | `30` |
 
 ## Test
 
@@ -114,7 +115,7 @@ Support conversations continue over time, so sessions survive a server restart t
 
 ### Masked personal data
 
-Emails and phones are replaced by readable masks, such as `a***@coldmail.com`, before a message reaches the graph. The real values stay in memory and are put back only when a tool runs, so the model, the checkpoints and the history never hold them. CPF and card numbers are removed, since no tool needs them.
+Emails and phones are replaced by readable masks, such as `a***@coldmail.com`, before a message reaches the graph. The real values stay in memory and are put back only when a tool runs, so the model, the checkpoints and the history never hold them. CPF and card numbers are removed, since no tool needs them. A session idle for 30 days is deleted.
 
 ## Assumptions
 
@@ -167,7 +168,7 @@ The source values are kept, because nothing shows which conflicting value is rig
 
 - Compare models systematically, with an automated evaluation of the scenarios over repeated runs.
 - Try external LLM APIs, which could improve answer quality and speed at the cost of API fees and of sending customer data to a third party.
-- Add authentication, rate limiting, and expiry and trimming for history.
+- Add authentication and rate limiting.
 - Make handoffs idempotent and notify the team.
 - Add fuzzy product search and a shipping quote.
 - Add streaming replies and a simple chat interface.

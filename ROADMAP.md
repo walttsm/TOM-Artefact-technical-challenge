@@ -312,8 +312,8 @@ The tools need the customer's real email and phone, but the model and the histor
 2. A session idle for longer than that is deleted with `delete_thread`, along with its masks in memory. Check the current session on every request, and every session at startup and then at most once an hour.
 
 **Done when:**
-- [ ] An expired session returns an empty history and starts over on its next message.
-- [ ] Active sessions are kept.
+- [x] An expired session returns an empty history and starts over on its next message.
+- [x] Active sessions are kept.
 
 ### 6.3 Summarize long conversations
 

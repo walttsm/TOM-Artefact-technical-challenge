@@ -279,3 +279,11 @@ Masks in memory don't survive a restart. A tool call that still carries a mask i
 ### Keep the handoff's contact
 
 The team needs the real phone or email to call the customer back, so `registrar_encaminhamento` saves the restored value. Customer names typed into a message are not detected: a name has no pattern to match.
+
+### Expire idle sessions after 30 days
+
+A support case can take some days to close, so a session is kept for 30 days after its last message, set by `SESSION_TTL_DAYS`. Its last activity is the time of its latest checkpoint, so expiry needs no table of its own. Each request checks its own session, and a scan of all sessions runs at startup and then at most once an hour, on the next request. An expired session is deleted with `delete_thread`, along with its masks in memory, and its next message starts a new conversation. Handoffs are not expired: they belong to the team.
+
+### Save one checkpoint per turn
+
+The scan reads every checkpoint, and LangGraph saved one per graph step. `durability="exit"` saves only when the turn ends. A failed turn is still saved as it stood, and the next turn overwrites it as before.

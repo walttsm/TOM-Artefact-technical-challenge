@@ -1,11 +1,12 @@
 import re
 from contextlib import closing
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import httpx
 import ollama
 import pytest
+from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.checkpoint.sqlite import SqliteSaver
 from ollama._utils import convert_function_to_tool
 
@@ -412,3 +413,77 @@ def test_masked_email_finds_the_customers_order(real_db):
     agent.ask("s1", "Status do pedido 8? Meu e-mail é anacarol.ferreira@coldmail.com")
 
     assert '"numero": 8' in llm.calls[1][-1]["content"]
+
+
+class Clock:
+    """Real time plus an offset, since checkpoints are stamped with the real time."""
+
+    def __init__(self) -> None:
+        self.offset = timedelta()
+
+    def __call__(self) -> datetime:
+        return datetime.now(UTC) + self.offset
+
+
+TTL = timedelta(days=30)
+
+
+def test_idle_session_expires_and_starts_over():
+    clock = Clock()
+    llm = ScriptedLLM("Olá, Ana!", "Prazer!")
+    agent = Agent(llm, session_ttl=TTL, clock=clock)
+    agent.ask("s1", "Meu e-mail é ana@jmail.com")
+
+    clock.offset = TTL + timedelta(hours=1)
+
+    assert agent.history("s1") == []
+    agent.ask("s1", "Oi de novo")
+    assert [m["content"] for m in llm.calls[-1][1:]] == ["Oi de novo"]
+    assert agent._vaults["s1"] == {}
+
+
+def test_active_sessions_are_kept():
+    clock = Clock()
+    agent = Agent(ScriptedLLM("a", "b"), session_ttl=TTL, clock=clock)
+    agent.ask("s1", "pergunta 1")
+    agent.ask("s2", "pergunta 2")
+
+    clock.offset = TTL - timedelta(hours=1)
+
+    assert len(agent.history("s1")) == 2
+    assert len(agent.history("s2")) == 2
+
+
+@pytest.mark.parametrize("sqlite", [False, True])
+def test_startup_deletes_every_idle_session(tmp_path, sqlite):
+    with SqliteSaver.from_conn_string(str(tmp_path / "checkpoints.db")) as sqlite_saver:
+        saver, clock = sqlite_saver if sqlite else InMemorySaver(), Clock()
+        agent = Agent(ScriptedLLM("a", "b"), checkpointer=saver, session_ttl=TTL, clock=clock)
+        agent.ask("s1", "pergunta 1")
+        agent.ask("s2", "pergunta 2")
+
+        clock.offset = TTL + timedelta(hours=1)
+        Agent(ScriptedLLM(), checkpointer=saver, session_ttl=TTL, clock=clock)
+
+        assert list(saver.list(None)) == []
+
+
+def test_sessions_never_expire_without_a_ttl():
+    clock = Clock()
+    agent = Agent(ScriptedLLM("a"), clock=clock)
+    agent.ask("s1", "pergunta")
+
+    clock.offset = timedelta(days=365)
+
+    assert len(agent.history("s1")) == 2
+
+
+def test_session_is_checked_between_scans():
+    clock = Clock()
+    agent = Agent(ScriptedLLM("a"), session_ttl=timedelta(minutes=1), clock=clock)
+    agent.ask("s1", "pergunta")
+
+    # Well before the next scan of all sessions.
+    clock.offset = timedelta(minutes=2)
+
+    assert agent.history("s1") == []

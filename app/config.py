@@ -20,6 +20,8 @@ class Settings:
     data_dir: Path = PROJECT_ROOT / "data"
     db_path: Path = PROJECT_ROOT / "storage" / "emporio.db"
     checkpoints_path: Path = PROJECT_ROOT / "storage" / "checkpoints.db"
+    # A session idle for longer than this is deleted, with everything it holds.
+    session_ttl_days: float = 30
 
 
 def get_settings() -> Settings:
@@ -33,4 +35,5 @@ def get_settings() -> Settings:
         checkpoints_path=Path(
             os.getenv("CHECKPOINTS_PATH", PROJECT_ROOT / "storage" / "checkpoints.db")
         ),
+        session_ttl_days=float(os.getenv("SESSION_TTL_DAYS", "30")),
     )

@@ -3,6 +3,7 @@
 import logging
 from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
+from datetime import UTC, datetime, timedelta
 from inspect import signature
 from operator import add
 from typing import Annotated, Any, Literal, NotRequired, TypedDict
@@ -24,6 +25,8 @@ from app.policy.privacy import is_masked, pseudonymize, reveal
 logger = logging.getLogger(__name__)
 
 MAX_TOOL_ROUNDS = 5
+# Every request checks its own session. The scan of all sessions runs less often.
+EXPIRY_SCAN_INTERVAL = timedelta(hours=1)
 CONTACT_EXPIRED = (
     "os dados de contato mascarados não estão mais disponíveis. "
     "Peça ao cliente para informá-los de novo."
@@ -130,7 +133,13 @@ class Agent:
         llm: LLM,
         tools: Sequence[Tool] = (),
         checkpointer: BaseCheckpointSaver | None = None,
+        session_ttl: timedelta | None = None,
+        clock: Callable[[], datetime] = lambda: datetime.now(UTC),
     ) -> None:
+        self._checkpointer = checkpointer or InMemorySaver()
+        self._session_ttl = session_ttl
+        self._clock = clock
+        self._next_expiry_scan = clock()
         tools_by_name = {tool.__name__: tool for tool in tools}
         # Real contact values per session, in memory only: checkpoints keep the masks.
         self._vaults: dict[str, dict[str, str]] = {}
@@ -168,16 +177,22 @@ class Agent:
         builder.add_conditional_edges("tools", after_tools)
         builder.add_edge("give_up", "finish_turn")
         builder.add_edge("finish_turn", END)
-        self._graph = builder.compile(checkpointer=checkpointer or InMemorySaver())
+        self._graph = builder.compile(checkpointer=self._checkpointer)
+        self._expire_idle_sessions()
 
     def ask(self, session_id: str, question: str) -> str:
+        self._expire_idle_sessions(session_id)
         masked = pseudonymize(question, self._vaults.setdefault(session_id, {}))
         turn_start = Overwrite([{"role": "user", "content": masked}])
-        state = self._graph.invoke({"messages": [], "turn": turn_start}, _thread(session_id))
+        # One checkpoint per turn, rather than one per step, keeps the expiry scan short.
+        state = self._graph.invoke(
+            {"messages": [], "turn": turn_start}, _thread(session_id), durability="exit"
+        )
         return state["messages"][-1]["content"]
 
     def history(self, session_id: str) -> list[Message]:
         """What the customer and the assistant said, without the tool calls."""
+        self._expire_idle_sessions(session_id)
         messages = self._graph.get_state(_thread(session_id)).values.get("messages", [])
         return [
             {"role": message["role"], "content": message["content"]}
@@ -185,13 +200,38 @@ class Agent:
             if message["role"] in ("user", "assistant") and not message.get("tool_calls")
         ]
 
+    def _expire_idle_sessions(self, session_id: str | None = None) -> None:
+        """Delete sessions idle for longer than the TTL: this one, or all when a scan is due."""
+        if self._session_ttl is None:
+            return
+        now = self._clock()
+        last_active: dict[str, str] = {}
+        if now >= self._next_expiry_scan:
+            self._next_expiry_scan = now + EXPIRY_SCAN_INTERVAL
+            for saved in self._checkpointer.list(None):
+                thread_id = saved.config["configurable"]["thread_id"]
+                ts = saved.checkpoint["ts"]
+                last_active[thread_id] = max(last_active.get(thread_id, ts), ts)
+        elif session_id and (saved := self._checkpointer.get_tuple(_thread(session_id))):
+            last_active[session_id] = saved.checkpoint["ts"]
+        for thread_id, ts in last_active.items():
+            if now - datetime.fromisoformat(ts) > self._session_ttl:
+                self._checkpointer.delete_thread(thread_id)
+                self._vaults.pop(thread_id, None)
+                logger.info("Expired idle session %s", thread_id)
+
 
 @contextmanager
 def store_agent(settings: Settings) -> Iterator[Agent]:
     """The real agent: Ollama, the store's tools and history that survives restarts."""
     settings.checkpoints_path.parent.mkdir(parents=True, exist_ok=True)
     with SqliteSaver.from_conn_string(str(settings.checkpoints_path)) as checkpointer:
-        yield Agent(ollama_llm(settings), StoreTools(settings.db_path).all(), checkpointer)
+        yield Agent(
+            ollama_llm(settings),
+            StoreTools(settings.db_path).all(),
+            checkpointer,
+            session_ttl=timedelta(days=settings.session_ttl_days),
+        )
 
 
 def _thread(session_id: str) -> dict:
