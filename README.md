@@ -161,7 +161,7 @@ The source values are kept, because nothing shows which conflicting value is rig
 - **Model reliability:** answers vary between runs, and each scenario was run only a few times. `investigations.md` lists what was seen.
 - **Follow-up questions:** the model can reuse earlier tool results, so prices in a long conversation can be out of date.
 - **Security:** the API has no authentication or rate limiting, so anyone with a `session_id` can read that conversation. Identity checks are basic and suit a prototype only.
-- **Personal data:** emails and phones are masked before they reach the model or the history, and CPF and card numbers are removed. Names are not detected, and after a restart the customer has to give their contact again.
+- **Personal data:** emails and phones are masked before they reach the model or the history, and CPF and card numbers are removed. Customer names are kept on purpose, to show that the model keeps the conversation's context (see `decisions.md`). After a restart, the customer has to give their contact again.
 - **Context size:** the context is estimated from characters, not counted, and a single turn with many large tool results is not summarized until the next turn.
 - **Handoffs:** they are saved but notify no one. If the model fails right after registering one, a retry can register it twice.
 - **Search:** it is keyword-based, doesn't handle typos, and matches words in descriptions, so a search can include a related product. A term combining a campaign and a product returns nothing.

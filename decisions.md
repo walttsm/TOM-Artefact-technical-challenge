@@ -278,7 +278,11 @@ Masks in memory don't survive a restart. A tool call that still carries a mask i
 
 ### Keep the handoff's contact
 
-The team needs the real phone or email to call the customer back, so `registrar_encaminhamento` saves the restored value. Customer names typed into a message are not detected: a name has no pattern to match.
+The team needs the real phone or email to call the customer back, so `registrar_encaminhamento` saves the restored value.
+
+### Keep customer names, on purpose
+
+Names typed into a message are kept as they are. This is a choice for this project, not an oversight: a customer who says "Meu nome é Ana" and is later called Ana shows that the model keeps the context of the conversation, and masking the name would hide that. No tool returns a customer's name, so a name only appears if the customer types it. A production version would mask names as well, which needs a named-entity model rather than a pattern, since a name has no fixed format.
 
 ### Expire idle sessions after 30 days
 
