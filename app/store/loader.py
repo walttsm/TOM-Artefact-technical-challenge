@@ -5,7 +5,9 @@ import unicodedata
 from collections import Counter
 from pathlib import Path
 
+# The names the files had when the challenge provided them.
 CSV_NAME = "desafio_tecnico_ai_eng - {table}.csv"
+TABLES = ("categories", "products", "promotions", "customers", "orders", "order_items")
 
 
 def to_search_text(text: str) -> str:

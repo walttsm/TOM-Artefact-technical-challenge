@@ -35,13 +35,30 @@ py -3.12 -m venv $HOME\.venvs\emporio
 
 ### Load the data
 
-`data/` is not in this repository. Copy the challenge's six CSV files and `políticas_da_loja.pdf` into `data/`, then build the database:
+`data/` is not in this repository on purpose. The CSVs hold customers' names, emails and phones. They are fictional, but I treated them as I would real customer data, which stays out of version control. The challenge provides the files, so they are copied in rather than downloaded.
+
+Copy the files into `data/`, with the names they had when the challenge provided them:
+
+```
+data/
+├── desafio_tecnico_ai_eng - categories.csv
+├── desafio_tecnico_ai_eng - customers.csv
+├── desafio_tecnico_ai_eng - order_items.csv
+├── desafio_tecnico_ai_eng - orders.csv
+├── desafio_tecnico_ai_eng - products.csv
+├── desafio_tecnico_ai_eng - promotions.csv
+└── políticas_da_loja.pdf
+```
+
+Then build the database:
 
 ```powershell
 & $HOME\.venvs\emporio\Scripts\python -m app.ingest
 ```
 
-This creates `storage/emporio.db` and logs the inconsistencies it finds. Run it again whenever the files change. It replaces the tables in one transaction and keeps registered handoffs.
+This creates `storage/emporio.db` and logs the inconsistencies it finds. If a file is missing or renamed, it lists the files it expected and changes nothing. Run it again whenever the files change. It replaces the tables in one transaction and keeps registered handoffs.
+
+The server doesn't start until the database exists.
 
 ### Run
 

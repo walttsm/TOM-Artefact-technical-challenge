@@ -6,8 +6,8 @@ import pytest
 
 from app.config import PROJECT_ROOT
 from app.ingest import IngestionError, ingest
-from app.policy.manual import ManualSection, parse_manual
-from app.store.loader import CSV_NAME, to_search_text
+from app.policy.manual import MANUAL_NAME, ManualSection, parse_manual
+from app.store.loader import CSV_NAME, TABLES, to_search_text
 
 REAL_DATA = PROJECT_ROOT / "data"
 needs_real_data = pytest.mark.skipif(
@@ -45,11 +45,11 @@ SAMPLE_CSVS = {
 
 @pytest.fixture(autouse=True)
 def sample_manual(monkeypatch):
-    """Sample data has no PDF, and no library here can write one."""
+    """Sample data has an empty placeholder for the PDF, since no library here can write one."""
     monkeypatch.setattr(
         "app.ingest.parse_manual",
         lambda path: parse_manual(path)
-        if path.exists()
+        if path.stat().st_size
         else [ManualSection("1", "Sobre", "Texto")],
     )
 
@@ -59,6 +59,7 @@ def write_csvs(data_dir: Path, **overrides: str) -> Path:
     for table, content in {**SAMPLE_CSVS, **overrides}.items():
         path = data_dir / CSV_NAME.format(table=table)
         path.write_text(content, encoding="utf-8", newline="")
+    (data_dir / MANUAL_NAME).touch()
     return data_dir
 
 
@@ -181,23 +182,49 @@ def test_missing_file_keeps_previous_data(tmp_path):
     before = dump(db_path)
     (data_dir / CSV_NAME.format(table="order_items")).unlink()
 
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(IngestionError, match="order_items"):
         ingest(data_dir, db_path)
 
     assert dump(db_path) == before
 
 
-def test_missing_manual_keeps_previous_data(tmp_path, monkeypatch):
+def test_missing_manual_keeps_previous_data(tmp_path):
     db_path = tmp_path / "test.db"
     data_dir = write_csvs(tmp_path / "data")
     ingest(data_dir, db_path)
     before = dump(db_path)
-    monkeypatch.setattr("app.ingest.parse_manual", parse_manual)
+    (data_dir / MANUAL_NAME).unlink()
 
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(IngestionError, match=MANUAL_NAME):
         ingest(data_dir, db_path)
 
     assert dump(db_path) == before
+
+
+def test_empty_data_folder_lists_every_missing_file(tmp_path):
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+
+    with pytest.raises(IngestionError) as error:
+        ingest(data_dir, tmp_path / "test.db")
+
+    message = str(error.value)
+    for name in [CSV_NAME.format(table=table) for table in TABLES] + [MANUAL_NAME]:
+        assert f"  - {name}\n" in message
+    assert "README" in message
+    assert not (tmp_path / "test.db").exists()
+
+
+def test_renamed_file_is_reported_by_its_expected_name(tmp_path):
+    data_dir = write_csvs(tmp_path / "data")
+    expected = CSV_NAME.format(table="orders")
+    (data_dir / expected).rename(data_dir / "orders.csv")
+
+    with pytest.raises(IngestionError) as error:
+        ingest(data_dir, tmp_path / "test.db")
+
+    listed = [line for line in str(error.value).splitlines() if line.startswith("  - ")]
+    assert listed == [f"  - {expected}"]
 
 
 def test_only_one_active_promotion_per_product(tmp_path):

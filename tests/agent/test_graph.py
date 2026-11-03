@@ -276,11 +276,25 @@ def test_history_survives_a_restart_and_a_failed_call(tmp_path):
 
 def test_store_agent_creates_the_checkpoint_folder(tmp_path):
     path = tmp_path / "nova" / "checkpoints.db"
-    settings = Settings(SETTINGS.ollama_host, "any-model", 16384, 1.0, checkpoints_path=path)
+    db_path = tmp_path / "emporio.db"
+    db_path.touch()
+    settings = Settings(
+        SETTINGS.ollama_host, "any-model", 16384, 1.0, db_path=db_path, checkpoints_path=path
+    )
 
     with store_agent(settings) as agent:
         assert agent.history("nope") == []
     assert path.exists()
+
+
+def test_store_agent_needs_the_loaded_data(tmp_path):
+    settings = Settings(
+        SETTINGS.ollama_host, "any-model", 16384, 1.0, db_path=tmp_path / "missing.db"
+    )
+
+    with pytest.raises(RuntimeError, match="python -m app.ingest"):
+        with store_agent(settings):
+            pass
 
 
 received: list[str] = []

@@ -249,6 +249,11 @@ class Agent:
 @contextmanager
 def store_agent(settings: Settings) -> Iterator[Agent]:
     """The real agent: the configured model, the store's tools and lasting history."""
+    # Without it, every tool call would fail mid-conversation instead.
+    if not settings.db_path.is_file():
+        raise RuntimeError(
+            f"{settings.db_path} not found. Load the data first: python -m app.ingest"
+        )
     settings.checkpoints_path.parent.mkdir(parents=True, exist_ok=True)
     with SqliteSaver.from_conn_string(str(settings.checkpoints_path)) as checkpointer:
         yield Agent(

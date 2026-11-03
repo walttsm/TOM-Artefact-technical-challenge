@@ -9,7 +9,7 @@ from app.config import get_settings
 from app.policy.manual import MANUAL_NAME, parse_manual
 from app.policy.pricing import is_installment_allowed
 from app.store.database import connect_for_writing, create_schema
-from app.store.loader import load_catalog, load_orders
+from app.store.loader import CSV_NAME, TABLES, load_catalog, load_orders
 from app.store.policy_sections import save_sections
 from app.store.quality import Inconsistency, find_inconsistencies, list_credit_orders
 
@@ -18,6 +18,19 @@ logger = logging.getLogger(__name__)
 
 class IngestionError(Exception):
     pass
+
+
+def _check_data_files(data_dir: Path) -> None:
+    # Checked before loading, so a wrong copy lists every missing file at once.
+    expected = [CSV_NAME.format(table=table) for table in TABLES] + [MANUAL_NAME]
+    missing = [name for name in expected if not (data_dir / name).is_file()]
+    if missing:
+        listed = "\n".join(f"  - {name}" for name in missing)
+        raise IngestionError(
+            f"Files missing from {data_dir}:\n{listed}\n"
+            "Copy the challenge's files into that folder with their original names. "
+            "The README's 'Load the data' section lists them."
+        )
 
 
 def _check_foreign_keys(conn: sqlite3.Connection) -> None:
@@ -46,6 +59,7 @@ def _orders_below_installment_minimum(conn: sqlite3.Connection) -> list[Inconsis
 
 
 def ingest(data_dir: Path, db_path: Path) -> list[Inconsistency]:
+    _check_data_files(data_dir)
     with closing(connect_for_writing(db_path)) as conn:
         conn.execute("BEGIN IMMEDIATE")
         try:
@@ -64,7 +78,11 @@ def ingest(data_dir: Path, db_path: Path) -> list[Inconsistency]:
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     settings = get_settings()
-    inconsistencies = ingest(settings.data_dir, settings.db_path)
+    try:
+        inconsistencies = ingest(settings.data_dir, settings.db_path)
+    except IngestionError as exc:
+        # A message for the person running the command, not a traceback.
+        raise SystemExit(f"Ingestion failed. {exc}") from None
     for item in inconsistencies:
         logger.warning("%s %s: %s -> %s", item.kind, item.record_id, item.detail, item.treatment)
     logger.info(
