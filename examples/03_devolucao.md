@@ -2,20 +2,23 @@
 
 **Cliente:** Me arrependi da minha compra, posso devolver meu pedido?
 
-**Tom:** Oi! Tudo bem? Eu sou o Tom, o assistente virtual da Empório da Música.
+**Tom:** Poxa, entendo perfeitamente que às vezes a gente muda de ideia. Para eu te ajudar com as orientações certas sobre a devolução, eu só preciso de algumas informações:
 
-Poxa, entendo perfeitamente. Para eu te ajudar com essa informação sobre a devolução por arrependimento, eu preciso de dois detalhes rapidinho:
+Você fez essa compra pela nossa loja online ou aqui na loja física? E qual foi a data da compra (ou a data que você recebeu o produto)?
 
-Você fez a compra pela nossa loja física ou pelo site? E qual foi a data da compra (ou a data que você recebeu o produto)?
-
-Assim que você me passar essas informações, eu consulto as nossas regras e te explico como funciona!
+Assim que você me passar esses detalhes, eu te explico como funciona a nossa política de devolução para o seu caso!
 
 **Cliente:** Comprei pelo site e recebi há 3 dias.
 
 _Ferramenta: `consultar_politica({"secao": "4.1"})`_
 
-**Tom:** Como você recebeu o produto há apenas 3 dias e a compra foi feita pelo site, você ainda está dentro do prazo de 7 dias corridos para solicitar a devolução por arrependimento.
+**Tom:** Como você comprou pelo site e recebeu o produto há apenas 3 dias, você está dentro do prazo de 7 dias corridos para exercer o seu direito de arrependimento!
 
-Para seguir com o processo, o produto precisa estar na embalagem original, sem sinais de uso e com todos os acessórios e manuais. O reembolso é feito na mesma forma de pagamento que você usou e leva até 10 dias úteis. Além disso, o frete de devolução fica por nossa conta.
+Nesse caso, você pode solicitar a devolução, seguindo estas condições:
+- O instrumento deve estar na embalagem original, sem sinais de uso e com todos os acessórios e manuais inclusos.
+- O reembolso é feito na mesma forma de pagamento original em até 10 dias úteis.
+- O frete de devolução é por nossa conta.
 
-Você gostaria de saber mais alguma coisa ou precisa de ajuda com outro assunto?
+Para dar início ao processo de devolução, você pode entrar em contato com a nossa equipe pelo WhatsApp ou e-mail, e eles vão te orientar com os próximos passos!
+
+Precisa de ajuda com mais alguma coisa?
