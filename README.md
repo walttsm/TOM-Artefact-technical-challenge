@@ -255,7 +255,17 @@ The source values are kept, because nothing shows which conflicting value is rig
 - **Follow-up questions:** the model can reuse earlier tool results, so prices in a long conversation can be out of date.
 - **Context size:** the context is estimated from characters, not counted, and a single turn with many large tool results is not summarized until the next turn.
 - **Search:** it matches words in descriptions, so a search can include a related product. A term combining a campaign and a product returns nothing.
-- **Masked contacts:** the real values are held in memory by a single server process. After a restart, the customer has to give their contact again.
+- **Masked contacts:** the real values are held in memory by a single server process. After a restart, the customer has to give their contact again. [Scaling in production](#scaling-in-production) covers a shared store.
+
+### Scaling in production
+
+The prototype answers each message inside its HTTP request, in a single process. A local model on one machine answers one message at a time and takes 3 to 20 seconds, so production traffic would need a different setup:
+
+- **A message queue:** the channel's webhook puts each message on a queue, such as RabbitMQ or a managed one like Amazon SQS, and returns at once. Workers take messages from the queue, run the agent and send the reply through the channel. Messages from one session are processed in order, failed ones are retried, and bursts wait in the queue instead of timing out.
+- **Horizontal scaling and load balancing:** workers scale with the length of the queue, and Ollama instances run on GPU machines behind a load balancer. The exact design depends on the cloud chosen. On AWS, for example, this could be GPU instances in an Auto Scaling group, or containers on ECS or EKS.
+- **Shared state:** any worker must be able to serve any session. Checkpoints would move from SQLite to a shared database, for which LangGraph has a PostgreSQL saver. The masked contacts held in memory would move to a shared store with expiry, such as Redis.
+- **With a remote provider:** model capacity and load balancing become the provider's responsibility, within its rate limits. The queue is still useful: it absorbs bursts, retries calls that fail or hit a rate limit, and keeps the service available when the provider is slow.
+- **Scheduled jobs:** ingestion of new data and the scan for expired sessions could run in a workflow orchestrator such as Apache Airflow, which suits scheduled jobs better than processing individual messages.
 
 ### Also with more time
 
