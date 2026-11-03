@@ -282,6 +282,50 @@ Compare at least two local models and note the results. In that earlier build, `
 - [x] The repo contains no `.env` or `storage/`.
 - [ ] Submit the link before the deadline, and don't change the repo after it.
 
+## Phase 6: Personal data and context size
+
+Two limitations from Phase 5 are worth closing before submission: history keeps personal data in plain text with no expiry, and history has no size limit. Each numbered step is one commit.
+
+### 6.1 Mask personal data
+
+The tools need the customer's real email and phone, but the model and the history don't. Contact data is replaced by a mask before it enters the graph, and the real value stays in memory only, to be restored when a tool runs.
+
+1. `policy/privacy.py`, pure functions:
+   - CPF and card numbers become `[CPF omitido]` and `[cartão omitido]`. No tool needs them, so they are never kept.
+   - Emails and phones become readable masks, such as `a***@coldmail.com` and `(67) *****-3456`, which the model can pass to tools. Each mask is recorded with its real value.
+   - The store's own phone and email are never masked.
+   - A function puts the real values back into a tool's arguments.
+2. Mask each customer message before it enters the graph. Keep the real values per session in memory, never in checkpoints, and restore them in tool arguments.
+3. Tell the model in the prompt how masked data looks and that it should pass masks to tools as they are.
+
+**Done when:**
+- [ ] No checkpoint contains a customer's email, phone, CPF or card number, even after a failed turn.
+- [ ] `consultar_pedido` with a masked email still finds order 8.
+- [ ] `GET /sessions/{id}/messages` shows masks only.
+- [ ] `(67) 3341-4444`, tracking codes, prices and order numbers stay unmasked.
+- [ ] A real conversation looks up order 8 and registers a complaint using masked contacts.
+
+### 6.2 Session expiry
+
+1. `SESSION_TTL_DAYS` setting, 30 by default.
+2. A session idle for longer than that is deleted with `delete_thread`, along with its masks in memory. Check the current session on every request, and every session at startup and then at most once an hour.
+
+**Done when:**
+- [ ] An expired session returns an empty history and starts over on its next message.
+- [ ] Active sessions are kept.
+
+### 6.3 Summarize long conversations
+
+1. Estimate the context size of a call from its text, conservatively.
+2. Before each turn, when the estimate goes over a share of `num_ctx`, fold the oldest turns into a running summary written by the model, keeping the most recent turns whole. The summary goes into the context after the system prompt.
+3. Keep the full history for `GET /sessions/{id}/messages`: only the model's context shrinks.
+4. The summary carries the customer's request, products, order and protocol numbers and anything pending. It leaves out prices, which the model must look up again.
+
+**Done when:**
+- [ ] Graph tests with a scripted fake show a summary replacing old turns once the limit is passed, and then being updated.
+- [ ] A failed summary call leaves the session as it was.
+- [ ] Short conversations make no extra model call.
+
 ## Known limitations to plan for
 
 - Production would need API authentication and rate limiting: anyone with a `session_id` can read that conversation.
