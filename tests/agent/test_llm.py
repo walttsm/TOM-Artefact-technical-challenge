@@ -1,19 +1,150 @@
+import json
 from pathlib import Path
 
 import httpx
 import ollama
+import openai
 import pytest
 from ollama._utils import convert_function_to_tool
+from openai.types.chat import ChatCompletion
 
-from app.agent.llm import LLMUnavailable, ollama_llm
+from app.agent.llm import LLMUnavailable, ollama_llm, openai_llm
 from app.agent.tools import StoreTools
 from app.config import Settings
 
-SETTINGS = Settings("http://127.0.0.1:9", "any-model", 16384, 1.0)
+SETTINGS = Settings("http://127.0.0.1:9", "any-model", 16384, 1.0, openai_model="remote-model")
 
 
 def preco(produto: str) -> str:
+    """Busca o preço.
+
+    Args:
+        produto: Nome do produto.
+    """
     return f"{produto}: R$ 100,00"
+
+
+class FakeOpenAI:
+    """Stands in for openai.OpenAI: records each request and returns a scripted reply."""
+
+    def __init__(self, *replies: dict | Exception) -> None:
+        self.replies = list(replies)
+        self.requests: list[dict] = []
+        self.chat = self
+        self.completions = self
+
+    def create(self, **request) -> ChatCompletion:
+        self.requests.append(request)
+        reply = self.replies.pop(0)
+        if isinstance(reply, Exception):
+            raise reply
+        return ChatCompletion.model_validate(
+            {
+                "id": "x",
+                "object": "chat.completion",
+                "created": 0,
+                "model": request["model"],
+                "choices": [{"index": 0, "finish_reason": "stop", "message": reply}],
+            }
+        )
+
+
+def openai_call(name: str, arguments: str) -> dict:
+    return {
+        "role": "assistant",
+        "content": None,
+        "tool_calls": [
+            {"id": "abc", "type": "function", "function": {"name": name, "arguments": arguments}}
+        ],
+    }
+
+
+def test_openai_adapter_returns_a_plain_answer():
+    client = FakeOpenAI({"role": "assistant", "content": " Olá! "})
+
+    reply = openai_llm(SETTINGS, client)([{"role": "user", "content": "oi"}], [])
+
+    assert reply == {"role": "assistant", "content": "Olá!"}
+    assert client.requests == [
+        {"model": "remote-model", "messages": [{"role": "user", "content": "oi"}]}
+    ]
+
+
+def test_openai_adapter_sends_tool_schemas_and_returns_plain_tool_calls():
+    client = FakeOpenAI(openai_call("preco", '{"produto": "GD20"}'))
+
+    reply = openai_llm(SETTINGS, client)([{"role": "user", "content": "Quanto custa?"}], [preco])
+
+    schema = client.requests[0]["tools"][0]
+    assert schema["type"] == "function"
+    assert schema["function"]["name"] == "preco"
+    assert schema["function"]["parameters"]["properties"]["produto"]["type"] == "string"
+    assert reply == {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [{"function": {"name": "preco", "arguments": {"produto": "GD20"}}}],
+    }
+
+
+def test_openai_adapter_links_each_tool_result_to_its_call():
+    client = FakeOpenAI({"role": "assistant", "content": "Custam R$ 100,00."})
+    both = [
+        {"function": {"name": "preco", "arguments": {"produto": "A"}}},
+        {"function": {"name": "preco", "arguments": {"produto": "B"}}},
+    ]
+    history = [
+        {"role": "system", "content": "regras"},
+        {"role": "user", "content": "Compare"},
+        {"role": "assistant", "content": "", "tool_calls": both},
+        {"role": "tool", "tool_name": "preco", "content": "A: R$ 100,00"},
+        {"role": "tool", "tool_name": "preco", "content": "B: R$ 100,00"},
+    ]
+
+    openai_llm(SETTINGS, client)(history, [preco])
+
+    sent = client.requests[0]["messages"]
+    assert sent[:2] == history[:2]
+    assert sent[2]["content"] is None
+    ids = [call["id"] for call in sent[2]["tool_calls"]]
+    assert len(set(ids)) == 2
+    assert json.loads(sent[2]["tool_calls"][1]["function"]["arguments"]) == {"produto": "B"}
+    assert sent[3:] == [
+        {"role": "tool", "tool_call_id": ids[0], "content": "A: R$ 100,00"},
+        {"role": "tool", "tool_call_id": ids[1], "content": "B: R$ 100,00"},
+    ]
+
+
+@pytest.mark.parametrize("arguments", ['{"produto": "GD', '["GD20"]'])
+def test_openai_adapter_passes_invalid_arguments_on_for_the_model_to_fix(arguments):
+    client = FakeOpenAI(openai_call("preco", arguments))
+
+    reply = openai_llm(SETTINGS, client)([{"role": "user", "content": "oi"}], [preco])
+
+    assert reply["tool_calls"][0]["function"]["arguments"] == {"json_invalido": arguments}
+
+
+REQUEST = httpx.Request("POST", "http://x")
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        openai.APIConnectionError(request=REQUEST),
+        openai.APITimeoutError(request=REQUEST),
+        openai.AuthenticationError(
+            "bad key", response=httpx.Response(401, request=REQUEST), body=None
+        ),
+    ],
+)
+def test_openai_errors_become_llm_unavailable(error):
+    with pytest.raises(LLMUnavailable):
+        openai_llm(SETTINGS, FakeOpenAI(error))([{"role": "user", "content": "oi"}], [])
+
+
+def test_openai_adapter_treats_an_empty_reply_as_unavailable():
+    client = FakeOpenAI({"role": "assistant", "content": "  "})
+    with pytest.raises(LLMUnavailable):
+        openai_llm(SETTINGS, client)([{"role": "user", "content": "oi"}], [])
 
 
 def test_ollama_connection_failure_becomes_llm_unavailable():

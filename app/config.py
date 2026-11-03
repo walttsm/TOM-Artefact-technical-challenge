@@ -22,6 +22,12 @@ class Settings:
     checkpoints_path: Path = PROJECT_ROOT / "storage" / "checkpoints.db"
     # A session idle for longer than this is deleted, with everything it holds.
     session_ttl_days: float = 30
+    # Used when the provider is "openai": OpenAI itself, or a compatible server.
+    openai_model: str = ""
+    openai_api_key: str | None = None
+    openai_base_url: str | None = None
+    openai_timeout: float = 60
+    openai_context_tokens: int = 16384
 
 
 def get_settings() -> Settings:

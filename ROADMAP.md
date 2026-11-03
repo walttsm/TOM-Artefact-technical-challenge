@@ -352,8 +352,8 @@ The graph already takes the model as a function from messages and tools to a rep
 4. Map the SDK's errors and empty replies to `LLMUnavailable`, so the API still returns 502.
 
 **Done when:**
-- [ ] Tests with a fake client cover a plain answer, a tool call with its result sent back, arguments the model sends as invalid JSON, and an error from the SDK.
-- [ ] A real conversation runs through Ollama's `/v1` endpoint with this adapter and uses `buscar_produtos`.
+- [x] Tests with a fake client cover a plain answer, a tool call with its result sent back, arguments the model sends as invalid JSON, and an error from the SDK.
+- [x] A real conversation runs through Ollama's `/v1` endpoint with this adapter and uses `buscar_produtos`.
 
 ### 7.3 Choose the provider by configuration
 

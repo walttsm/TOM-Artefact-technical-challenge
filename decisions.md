@@ -307,3 +307,21 @@ Only the model's context shrinks: `messages` keeps every message, and the summar
 ### Fail the turn if the summary fails
 
 The summary is written by the same model, so if it is unavailable the turn would fail anyway. The summary step runs before the model call, and its result reaches the state only if it succeeds, so a failure leaves the session as it was.
+
+## Phase 7: Remote models through the OpenAI API
+
+### Use the OpenAI SDK, with a configurable base URL
+
+The Chat Completions API is the format most providers and local servers accept, so one adapter with `base_url` covers OpenAI itself and any compatible server. The official SDK handles retries, timeouts and errors. A broader router such as LiteLLM would add many providers at the cost of a larger dependency, which an example doesn't need.
+
+### Keep the stored history in one format
+
+Checkpoints keep messages in the format the graph already uses, and the OpenAI adapter converts them on each call. Stored tool calls have no IDs, so the adapter makes them up from each call's position, and links each tool result to its call in order, as the graph stores them. A session can then move between providers, and old sessions still work.
+
+### Reuse Ollama's schema converter
+
+`ollama._utils.convert_function_to_tool` builds the schemas from the tools' signatures and Google-style docstrings, and its output is already in the OpenAI format. Reusing it means both providers see the same schemas. It is a private function, which is acceptable with `ollama` pinned. A tested converter of our own would replace it if that changed.
+
+### Send invalid tool arguments back to the model
+
+A remote model sends arguments as a JSON string, which can be invalid. Rather than fail the turn, the adapter passes the text on under `json_invalido`, an argument no tool accepts, so the existing error tells the model which arguments to use and asks for a new call.
