@@ -68,6 +68,7 @@ app/
     prompts/summary_prompt.md
     prompt.py
     tools.py
+    llm.py                # model adapters: Ollama, OpenAI-compatible
     graph.py
   api/
     main.py
@@ -340,8 +341,8 @@ The graph already takes the model as a function from messages and tools to a rep
 2. Update the imports in the API, the example script and the tests.
 
 **Done when:**
-- [ ] `graph.py` no longer imports `ollama`.
-- [ ] All tests pass unchanged apart from their imports.
+- [x] `graph.py` no longer imports `ollama`.
+- [x] All tests pass unchanged apart from their imports.
 
 ### 7.2 OpenAI-compatible adapter
 

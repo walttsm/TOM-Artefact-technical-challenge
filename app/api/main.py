@@ -7,7 +7,8 @@ from uuid import uuid4
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
-from app.agent.graph import Agent, LLMUnavailable, store_agent
+from app.agent.graph import Agent, store_agent
+from app.agent.llm import LLMUnavailable
 from app.config import get_settings
 
 

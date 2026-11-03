@@ -9,8 +9,6 @@ from inspect import getdoc, signature
 from operator import add
 from typing import Annotated, Any, Literal, NotRequired, TypedDict
 
-import httpx
-import ollama
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.checkpoint.memory import InMemorySaver
@@ -18,6 +16,7 @@ from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Overwrite
 
+from app.agent.llm import LLM, Message, Tool, ToolCall, ollama_llm
 from app.agent.prompt import build_summary_prompt, build_system_prompt
 from app.agent.tools import StoreTools
 from app.config import Settings
@@ -52,33 +51,6 @@ ROUND_LIMIT_REPLY = (
 )
 
 
-class ToolCallFunction(TypedDict):
-    name: str
-    arguments: dict[str, Any]
-
-
-class ToolCall(TypedDict):
-    function: ToolCallFunction
-
-
-class Message(TypedDict):
-    """Ollama's chat format, in plain values so checkpoints can store it."""
-
-    role: str
-    content: str
-    tool_calls: NotRequired[list[ToolCall]]
-    tool_name: NotRequired[str]
-
-
-Tool = Callable[..., str]
-# Returns an assistant message, which holds an answer, tool calls or both.
-LLM = Callable[[list[Message], Sequence[Tool]], Message]
-
-
-class LLMUnavailable(Exception):
-    """The model could not produce an answer."""
-
-
 class AgentState(TypedDict):
     # Finished turns only, so a failed LLM call leaves the history untouched.
     messages: Annotated[list[Message], add]
@@ -111,34 +83,6 @@ def _transcript(messages: Sequence[Message]) -> str:
             if message["content"]:
                 lines.append(f"Tom: {message['content']}")
     return "\n".join(lines)
-
-
-def ollama_llm(settings: Settings) -> LLM:
-    client = ollama.Client(host=settings.ollama_host, timeout=settings.ollama_timeout)
-
-    def call(messages: list[Message], tools: Sequence[Tool]) -> Message:
-        try:
-            response = client.chat(
-                model=settings.ollama_model,
-                messages=messages,
-                tools=list(tools) or None,
-                options={"num_ctx": settings.ollama_num_ctx},
-            )
-        except (ollama.ResponseError, ConnectionError, httpx.HTTPError) as exc:
-            raise LLMUnavailable(str(exc)) from exc
-        answer = (response.message.content or "").strip()
-        calls: list[ToolCall] = [
-            {"function": {"name": call.function.name, "arguments": dict(call.function.arguments)}}
-            for call in response.message.tool_calls or []
-        ]
-        if not answer and not calls:
-            raise LLMUnavailable("The model returned an empty answer.")
-        reply: Message = {"role": "assistant", "content": answer}
-        if calls:
-            reply["tool_calls"] = calls
-        return reply
-
-    return call
 
 
 def _run_tool(tools: dict[str, Tool], call: ToolCall, vault: dict[str, str]) -> Message:

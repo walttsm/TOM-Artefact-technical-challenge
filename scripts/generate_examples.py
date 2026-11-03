@@ -11,7 +11,8 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from app.agent.graph import LLM, Agent, ollama_llm
+from app.agent.graph import Agent
+from app.agent.llm import LLM, ollama_llm
 from app.agent.tools import StoreTools
 from app.config import PROJECT_ROOT, get_settings
 

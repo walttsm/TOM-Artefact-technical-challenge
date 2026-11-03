@@ -1,7 +1,8 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from app.agent.graph import Agent, LLMUnavailable
+from app.agent.graph import Agent
+from app.agent.llm import LLMUnavailable
 from app.api.main import create_app
 
 
